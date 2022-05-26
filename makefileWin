@@ -1,5 +1,5 @@
 
-TARGET ?= build/perlin.out
+TARGET ?= perlin.exe
 
 CC := gcc
 SRCS := $(wildcard *.c)
