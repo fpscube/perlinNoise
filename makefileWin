@@ -1,0 +1,18 @@
+
+TARGET ?= build/perlin.out
+
+CC := gcc
+SRCS := $(wildcard *.c)
+OBJS := $(patsubst %.c,build/%.o,$(wildcard *.c))
+CFLAGS := -Wall -g -O2 
+LDFLAGS := 
+
+build/%.o: %.c
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+$(TARGET): $(OBJS)
+	$(CC) $(OBJS) -o $@  -lmingw32 -lSDL2main -lSDL2
+
+.PHONY: clean
+clean:
+	$(RM) $(TARGET) $(OBJS)
