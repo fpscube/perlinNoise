@@ -1,7 +1,9 @@
+#include "stdlib.h"
 
+#define K_GRID_WIDTH    5
+#define K_GRID_HEIGHT   5
 
-
-
+ static float stc_gradient[K_GRID_WIDTH*K_GRID_HEIGHT][2]={0};
 
  // Function to linearly interpolate between a0 and a1
  // Weight w should be in the range [0.0, 1.0]
@@ -11,20 +13,27 @@
  
  // Computes the dot product of the distance and gradient vectors.
  float dotGridGradient(int ix, int iy, float x, float y) {
- 
-     // Precomputed (or otherwise) gradient vectors at each grid node
-     static float Gradient[10][10][2]={0};
- 
+  
      // Compute the distance vector
      float dx = x - (float)ix;
      float dy = y - (float)iy;
  
      // Compute the dot-product
-     return (dx*Gradient[iy][ix][0] + dy*Gradient[iy][ix][1]);
+     return (dx*stc_gradient[iy*K_GRID_WIDTH+ix][0] + dy*stc_gradient[iy*K_GRID_WIDTH+ix][1]);
+ }
+
+void perlinGenGradiant()
+ {
+     for(int i=0;i<(K_GRID_WIDTH*K_GRID_HEIGHT);i++)
+     {
+         stc_gradient[i][0]= (float)(rand())/(float)RAND_MAX;
+         stc_gradient[i][1]= (float)(rand())/(float)RAND_MAX;
+     }
+
  }
  
  // Compute Perlin noise at coordinates x, y
- float perlin(float x, float y) {
+ float perlinGetPixel(float x, float y) {
  
      // Determine grid cell coordinates
      int x0 = x;
@@ -50,5 +59,23 @@
      return value;
  }
 
+void perlinGenTexture(int * pBuffer,int pWidth,int pHeight)
+{
+    for (int x=0;x<pWidth;x++)
+    {
+        for (int y=0;y<pHeight;y++)
+        {
+            float xGrid = ((float)x)*K_GRID_WIDTH/((float)pWidth);
+            float yGrid = ((float)y)*K_GRID_HEIGHT/((float)pHeight);
+            float pixelval = perlinGetPixel(xGrid,yGrid);
+            pixelval = (pixelval +1.0) /2.0;
+            int pixelIntVal = (pixelval*255);
+            if(pixelIntVal>255) 
+                printf("error\n");
+            pixelIntVal = (pixelIntVal<<24) + (pixelIntVal<<16) + (pixelIntVal<<8) + 0xFF;
+            //printf("%x\n",pixelIntVal);
+            pBuffer[x+y*pWidth] =  pixelIntVal;
+        }
 
-
+    }
+}

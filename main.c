@@ -1,7 +1,9 @@
 
 #include <SDL2/SDL.h>
 #include "stdint.h"
-
+#include "stdio.h"
+extern void perlinGenGradiant();
+extern void perlinGenTexture(uint32_t * pBuffer,int pWidth,int pHeight);
 static SDL_Renderer *gSDLRenderer;
 static SDL_Texture *texture;
 #define WIDTH 1024
@@ -43,6 +45,9 @@ static void renderScene()
         gFrameBuffer[i]=0x00FF00FF;
     }
 
+    
+    perlinGenTexture(gFrameBuffer,WIDTH,HEIGHT);
+
     SDL_UpdateTexture(texture , NULL, (const void *)gFrameBuffer, WIDTH * sizeof (T_PixelType));
 
     SDL_RenderCopy(gSDLRenderer, texture, NULL, NULL);
@@ -51,10 +56,13 @@ static void renderScene()
 
 
 
+
+
 int main(int argc, char *argv[])
 {
 
     createWindow();
+    perlinGenGradiant();
 
     SDL_Event e;
     for (;;) {
@@ -66,6 +74,9 @@ int main(int argc, char *argv[])
             case SDL_QUIT:
                 SDL_Log("Program quit after %i ticks", e.quit.timestamp);
                 exit(0);
+                break;
+            case SDL_KEYDOWN:                
+                perlinGenGradiant();
                 break;
             default:
                 break;
