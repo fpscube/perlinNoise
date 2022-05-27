@@ -4,7 +4,7 @@
 #define K_GRID_WIDTH    10
 #define K_GRID_HEIGHT   10
 
- static float stc_gradient[K_GRID_WIDTH][K_GRID_HEIGHT][2]={0};
+ static float stc_gradient[K_GRID_WIDTH+1][K_GRID_HEIGHT+1][2]={0};
 
  // Function to linearly interpolate between a0 and a1
  // Weight w should be in the range [0.0, 1.0]
@@ -25,15 +25,13 @@
 
 void perlinGenGradiant()
  {
-    for (int y=0;y<K_GRID_HEIGHT;y++)
+    for (int y=0;y<(K_GRID_HEIGHT+1);y++)
     {
-        for (int x=0;x<K_GRID_WIDTH;x++)
+        for (int x=0;x<(K_GRID_WIDTH+1);x++)
         {
          stc_gradient[x][y][0]= (float)(rand())/(float)RAND_MAX*2.0-1.0;
-         stc_gradient[x][y][1]= (float)(rand())/(float)RAND_MAX*2.0-1.0;;
-         printf("%f,%f ", stc_gradient[x][y][0], stc_gradient[x][y][1]);
+         stc_gradient[x][y][1]= (float)(rand())/(float)RAND_MAX*2.0-1.0;
         }
-        printf("\n");
      }
 
  }

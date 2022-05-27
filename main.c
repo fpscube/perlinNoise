@@ -69,17 +69,19 @@ int main(int argc, char *argv[])
 
         renderScene();
 
-        SDL_PollEvent(&e);
-        switch (e.type) {
-            case SDL_QUIT:
-                SDL_Log("Program quit after %i ticks", e.quit.timestamp);
-                exit(0);
-                break;
-            case SDL_KEYDOWN:                
-                perlinGenGradiant();
-                break;
-            default:
-                break;
+        while(SDL_PollEvent(&e))
+        {
+            switch (e.type) {
+                case SDL_QUIT:
+                    SDL_Log("Program quit after %i ticks", e.quit.timestamp);
+                    exit(0);
+                    break;
+                case SDL_KEYDOWN:              
+                    perlinGenGradiant();
+                    break;
+                default:
+                    break;
+            }
         }
         SDL_Delay(10);
     }
