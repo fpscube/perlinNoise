@@ -1,17 +1,21 @@
 
 TARGET ?= perlin.exe
+BUILD_DIR ?= build
 
 CC := gcc
 SRCS := $(wildcard *.c)
 OBJS := $(patsubst %.c,build/%.o,$(wildcard *.c))
 CFLAGS := -Wall -g -O2 
-LDFLAGS := 
+LDFLAGS := -lmingw32 -lSDL2main -lSDL2
 
-build/%.o: %.c
+$(BUILD_DIR)/%.o: %.c $(BUILD_DIR)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 $(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $@  -lmingw32 -lSDL2main -lSDL2
+	$(CC) $(OBJS) -o $@  
+
+$(BUILD_DIR):
+	mkdir $@
 
 .PHONY: clean
 clean:
