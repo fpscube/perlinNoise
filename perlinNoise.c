@@ -1,9 +1,10 @@
 #include "stdlib.h"
+#include <stdio.h>
 
-#define K_GRID_WIDTH    5
-#define K_GRID_HEIGHT   5
+#define K_GRID_WIDTH    10
+#define K_GRID_HEIGHT   10
 
- static float stc_gradient[K_GRID_WIDTH*K_GRID_HEIGHT][2]={0};
+ static float stc_gradient[K_GRID_WIDTH][K_GRID_HEIGHT][2]={0};
 
  // Function to linearly interpolate between a0 and a1
  // Weight w should be in the range [0.0, 1.0]
@@ -19,18 +20,30 @@
      float dy = y - (float)iy;
  
      // Compute the dot-product
-     return (dx*stc_gradient[iy*K_GRID_WIDTH+ix][0] + dy*stc_gradient[iy*K_GRID_WIDTH+ix][1]);
+     return (dx*stc_gradient[ix][iy][0] + dy*stc_gradient[ix][iy][1]);
  }
 
 void perlinGenGradiant()
  {
-     for(int i=0;i<(K_GRID_WIDTH*K_GRID_HEIGHT);i++)
-     {
-         stc_gradient[i][0]= (float)(rand())/(float)RAND_MAX;
-         stc_gradient[i][1]= (float)(rand())/(float)RAND_MAX;
+    for (int y=0;y<K_GRID_HEIGHT;y++)
+    {
+        for (int x=0;x<K_GRID_WIDTH;x++)
+        {
+         stc_gradient[x][y][0]= (float)(rand())/(float)RAND_MAX*2.0-1.0;
+         stc_gradient[x][y][1]= (float)(rand())/(float)RAND_MAX*2.0-1.0;;
+         printf("%f,%f ", stc_gradient[x][y][0], stc_gradient[x][y][1]);
+        }
+        printf("\n");
      }
 
  }
+
+ static float fade(float t) {
+                                                        // Fade function as defined by Ken Perlin.  This eases coordinate values
+                                                        // so that they will ease towards integral values.  This ends up smoothing
+                                                        // the final output.
+    return t * t * t * (t * (t * 6 - 15) + 10);         // 6t^5 - 15t^4 + 10t^3
+}
  
  // Compute Perlin noise at coordinates x, y
  float perlinGetPixel(float x, float y) {
@@ -45,6 +58,9 @@ void perlinGenGradiant()
      // Could also use higher order polynomial/s-curve here
      float sx = x - (float)x0;
      float sy = y - (float)y0;
+
+     sx = fade(sx);
+     sy = fade(sy);
  
      // Interpolate between grid point gradients
      float n0, n1, ix0, ix1, value;
@@ -54,7 +70,7 @@ void perlinGenGradiant()
      n0 = dotGridGradient(x0, y1, x, y);
      n1 = dotGridGradient(x1, y1, x, y);
      ix1 = lerp(n0, n1, sx);
-     value = lerp(ix0, ix1, sy);
+     value = lerp(ix0, ix1,sy);
  
      return value;
  }
