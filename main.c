@@ -20,7 +20,7 @@ static void createWindow()
         printf("error initializing SDL: %s\n", SDL_GetError());
     }
 
-    SDL_Window* window = SDL_CreateWindow("GAME",
+    SDL_Window* window = SDL_CreateWindow("Perlin Noise press any key",
                                        SDL_WINDOWPOS_CENTERED,
                                        SDL_WINDOWPOS_CENTERED,
                                        WIDTH, HEIGHT, 0);
@@ -53,8 +53,6 @@ static void renderScene()
     SDL_RenderCopy(gSDLRenderer, texture, NULL, NULL);
     SDL_RenderPresent(gSDLRenderer);
 }
-
-
 
 
 

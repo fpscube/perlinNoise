@@ -5,8 +5,8 @@ BUILD_DIR ?= build
 CC := gcc
 SRCS := $(wildcard *.c)
 OBJS := $(patsubst %.c,build/%.o,$(wildcard *.c))
-CFLAGS := -Wall -g -O2 $(shell sdl2-config --cflags)
-LDFLAGS := $(shell sdl2-config --libs)
+CFLAGS := -Wall -g -O2
+LDFLAGS := -lSDL2
 
 
 $(BUILD_DIR)/%.o: %.c  $(BUILD_DIR)
