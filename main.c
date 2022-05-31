@@ -59,7 +59,23 @@ static void renderScene()
         lRect.x = lTextures[i].posX*K_MAP_TILE_DIMENSION - (int)lMapCtrl->posx + WIDTH/2;
         lRect.y = lTextures[i].posY*K_MAP_TILE_DIMENSION- (int)lMapCtrl->posy + HEIGHT/2;
         lRect.h=K_MAP_TILE_DIMENSION;       
-        lRect.w=K_MAP_TILE_DIMENSION;       
+        lRect.w=K_MAP_TILE_DIMENSION;    
+        if(lRect.x<0){
+            lRect.w = lRect.w + lRect.x;
+            lRect.x=0;
+        } 
+        if(lRect.y<0){
+            lRect.h = lRect.h + lRect.y;
+            lRect.y=0;
+        } 
+        if((lRect.x+ lRect.w) > WIDTH){
+            lRect.w = WIDTH-lRect.x;
+        } 
+        if((lRect.y+ lRect.h) > HEIGHT){
+            lRect.h = HEIGHT-lRect.y;
+        } 
+        
+        
         SDL_UpdateTexture(texture , &lRect, (const void *)lTextures[i].buffer, K_MAP_TILE_DIMENSION * sizeof (T_PixelType));
     }
     SDL_RenderCopy(gSDLRenderer, texture, NULL, NULL);
