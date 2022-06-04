@@ -50,35 +50,52 @@ static void renderScene()
     perlinGenTexture(gFrameBuffer,WIDTH,HEIGHT);
 
     T_map_ctrl *lMapCtrl = map_getMapControl();
-    T_map_texture * lTextures = map_getMapTexture();
 
     SDL_UpdateTexture(texture , NULL, (const void *)gFrameBuffer, WIDTH * sizeof (T_PixelType));
-    for(int i=0;i<9;i++)
-    {
-        SDL_Rect lRect;
-        lRect.x = lTextures[i].posX*K_MAP_TILE_DIMENSION - (int)lMapCtrl->posx + WIDTH/2;
-        lRect.y = lTextures[i].posY*K_MAP_TILE_DIMENSION- (int)lMapCtrl->posy + HEIGHT/2;
-        lRect.h=K_MAP_TILE_DIMENSION;       
-        lRect.w=K_MAP_TILE_DIMENSION;    
-        if(lRect.x<0){
-            lRect.w = lRect.w + lRect.x;
-            lRect.x=0;
-        } 
-        if(lRect.y<0){
-            lRect.h = lRect.h + lRect.y;
-            lRect.y=0;
-        } 
-        if((lRect.x+ lRect.w) > WIDTH){
-            lRect.w = WIDTH-lRect.x;
-        } 
-        if((lRect.y+ lRect.h) > HEIGHT){
-            lRect.h = HEIGHT-lRect.y;
-        } 
-        
-        
-        SDL_UpdateTexture(texture , &lRect, (const void *)lTextures[i].buffer, K_MAP_TILE_DIMENSION * sizeof (T_PixelType));
-    }
     SDL_RenderCopy(gSDLRenderer, texture, NULL, NULL);
+    for(int iRing=0;iRing<K_MAP_NB_RING;iRing++)
+    {
+        T_map_texture * lTextures = map_getMapTexture(iRing);
+        for(int i=0;i<9;i++)
+        {
+            SDL_Rect lRect;
+            lRect.x = lTextures[i].posX*lTextures[i].size - (int)lMapCtrl->posx + WIDTH/2;
+            lRect.y = lTextures[i].posY*lTextures[i].size - (int)lMapCtrl->posy + HEIGHT/2;
+
+            lRect.h=lTextures[i].size ;       
+            lRect.w=lTextures[i].size ;    
+
+            // clipping screen
+            if(lRect.x<0){
+                lRect.w = lRect.w + lRect.x;
+                lRect.x=0;
+            } 
+            if(lRect.y<0){
+                lRect.h = lRect.h + lRect.y;
+                lRect.y=0;
+            } 
+            if((lRect.x+ lRect.w) > WIDTH){
+                lRect.w = WIDTH-lRect.x;
+            } 
+            if((lRect.y+ lRect.h) > HEIGHT){
+                lRect.h = HEIGHT-lRect.y;
+            }     
+            
+            if(iRing==0)        
+            {    
+                SDL_UpdateTexture(texture , &lRect, (const void *)lTextures[i].buffer, lTextures[i].size  * sizeof (T_PixelType));
+
+                SDL_RenderCopy(gSDLRenderer, texture, &lRect, &lRect);
+            }
+            else
+            {
+               SDL_SetRenderDrawColor(gSDLRenderer, 255,(iRing-1)*250, 0, 255);
+               SDL_RenderDrawRect(gSDLRenderer, &lRect);
+            }
+
+        
+        }
+    }
 
 
     SDL_SetRenderDrawColor(gSDLRenderer, 255, 0, 0, 255);
@@ -132,6 +149,10 @@ int main(int argc, char *argv[])
             }
         }
         SDL_Delay(10);
-        map_refresh();
+
+        for(int iRing=0;iRing<K_MAP_NB_RING;iRing++)
+        {
+            map_refresh(iRing);
+        }
     }
 }

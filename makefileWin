@@ -6,7 +6,7 @@ CC := gcc
 SRCS := $(wildcard *.c)
 OBJS := $(patsubst %.c,build/%.o,$(wildcard *.c))
 CFLAGS := -Wall -g -O2 
-LDFLAGS := -lmingw32 -lSDL2main -lSDL2
+LDFLAGS := -lmingw32 -lSDL2main -lSDL2 -lm
 
 $(BUILD_DIR)/%.o: %.c $(BUILD_DIR)
 	$(CC) -c -o $@ $< $(CFLAGS)
