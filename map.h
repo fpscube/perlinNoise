@@ -26,6 +26,7 @@ typedef struct
 
 T_map_ctrl * map_getMapControl(void);
 T_map_texture * map_getMapTexture(int pRing);
+void map_computeTex(T_map_texture* pTexture);
 void map_refresh(int pRing);
 
 

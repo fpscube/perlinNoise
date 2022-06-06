@@ -52,7 +52,7 @@ void map_refresh(int pRing)
     T_tile *lGrid = &stc_map_grid[pRing][0];
     T_map_texture *lTextures = &stc_map_texture[pRing][0];
 
-    printf("%f,%f\n",stc_map_ctrl.posx,stc_map_ctrl.posy);
+   // printf("%f,%f\n",stc_map_ctrl.posx,stc_map_ctrl.posy);
 
     //Update Tile position
     int lTileDimension = K_MAP_TILE_RESOLUTION * powl(3,pRing);
@@ -116,14 +116,12 @@ void map_refresh(int pRing)
     for(int iTile=0;iTile<9;iTile++)
     {
         int lTextureId = lGrid[iTile].textureId;
-        //compute(textureId)
-        int color = (((lTextures[lTextureId].posX*K_MAP_TILE_RESOLUTION + lTextures[lTextureId].posY*K_MAP_TILE_RESOLUTION)%255)<<8 )+ 0xFF;
-        for(int i=0;i<(K_MAP_TILE_RESOLUTION*K_MAP_TILE_RESOLUTION);i++)
+        if(!lTextures[lTextureId].isUpToDate)
         {
-            lTextures[lTextureId].buffer[i]= color;
-        }
-        lTextures[lTextureId].computeId=K_MAP_TILE_RESOLUTION*K_MAP_TILE_RESOLUTION;
-        lTextures[lTextureId].isUpToDate=1;     
+            map_computeTex(&lTextures[lTextureId]);
+            lTextures[lTextureId].isUpToDate=1;
+
+        }     
     }
 
         for(int i=0;i<9;i++)

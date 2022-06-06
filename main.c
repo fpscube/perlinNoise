@@ -3,8 +3,8 @@
 #include "stdint.h"
 #include "stdio.h"
 #include "map.h"
-extern void perlinGenGradiant();
-extern void perlinGenTexture(uint32_t * pBuffer,int pWidth,int pHeight);
+
+extern void perlinGenTexture(uint32_t * pBuffer,int pPosX,int pPosY,int pSize,int pTextureSize,int pGridSize);
 static SDL_Renderer *gSDLRenderer;
 static SDL_Texture *texture;
 #define WIDTH 1024
@@ -38,6 +38,10 @@ static void createWindow()
 #endif
 
 }
+
+
+
+
 static void renderScene()
 {
     SDL_RenderClear(gSDLRenderer);
@@ -47,50 +51,78 @@ static void renderScene()
         gFrameBuffer[i]=0x00FF00FF;
     }
 
-    perlinGenTexture(gFrameBuffer,WIDTH,HEIGHT);
+    perlinGenTexture(gFrameBuffer,0,0,HEIGHT,HEIGHT,HEIGHT/10);
 
     T_map_ctrl *lMapCtrl = map_getMapControl();
 
-    SDL_UpdateTexture(texture , NULL, (const void *)gFrameBuffer, WIDTH * sizeof (T_PixelType));
+    SDL_UpdateTexture(texture , NULL, (const void *)gFrameBuffer, HEIGHT * sizeof (T_PixelType));
     SDL_RenderCopy(gSDLRenderer, texture, NULL, NULL);
-    for(int iRing=0;iRing<K_MAP_NB_RING;iRing++)
+    for(int iRing=(K_MAP_NB_RING-1);iRing>=0;iRing--)
     {
         T_map_texture * lTextures = map_getMapTexture(iRing);
         for(int i=0;i<9;i++)
         {
-            SDL_Rect lRect;
-            lRect.x = lTextures[i].posX*lTextures[i].size - (int)lMapCtrl->posx + WIDTH/2;
-            lRect.y = lTextures[i].posY*lTextures[i].size - (int)lMapCtrl->posy + HEIGHT/2;
 
-            lRect.h=lTextures[i].size ;       
-            lRect.w=lTextures[i].size ;    
+            SDL_Rect lRectSrc;
+            lRectSrc.x = 0;
+            lRectSrc.y = 0;
+
+            lRectSrc.h=K_MAP_TILE_RESOLUTION;
+            lRectSrc.w=K_MAP_TILE_RESOLUTION;
+
+
+            SDL_Rect lRectDst;
+            lRectDst.x = lTextures[i].posX*lTextures[i].size- (int)lMapCtrl->posx + WIDTH/2;
+            lRectDst.y = lTextures[i].posY*lTextures[i].size - (int)lMapCtrl->posy + HEIGHT/2;
+
+            lRectDst.h=lTextures[i].size ;       
+            lRectDst.w=lTextures[i].size ;  
+
+            int ringCoef = pow(3,iRing);  
 
             // clipping screen
-            if(lRect.x<0){
-                lRect.w = lRect.w + lRect.x;
-                lRect.x=0;
+            if(lRectDst.x<0){
+                float delta = -lRectDst.x;
+                lRectSrc.x += delta/(ringCoef);
+                lRectDst.x += delta;
+                lRectSrc.w -= delta/(ringCoef);
+                lRectDst.w -= delta;
             } 
-            if(lRect.y<0){
-                lRect.h = lRect.h + lRect.y;
-                lRect.y=0;
+            if(lRectDst.y<0){
+                float delta = -lRectDst.y;
+                lRectSrc.y += delta/(ringCoef);
+                lRectDst.y += delta;
+                lRectSrc.h -= delta/(ringCoef);
+                lRectDst.h -= delta;
             } 
-            if((lRect.x+ lRect.w) > WIDTH){
-                lRect.w = WIDTH-lRect.x;
+            if((lRectDst.x+ lRectDst.w) > WIDTH){
+                float delta = lRectDst.x + lRectDst.w - WIDTH;
+                lRectSrc.w -= delta/(ringCoef);
+                lRectDst.w -= delta;
             } 
-            if((lRect.y+ lRect.h) > HEIGHT){
-                lRect.h = HEIGHT-lRect.y;
+            if((lRectDst.y+ lRectDst.h) > HEIGHT){
+                float delta = lRectDst.y + lRectDst.h - HEIGHT;
+                lRectSrc.h -= delta/(ringCoef);
+                lRectDst.h -= delta;
             }     
             
-            if(iRing==0)        
+            if(iRing>=0)        
             {    
-                SDL_UpdateTexture(texture , &lRect, (const void *)lTextures[i].buffer, lTextures[i].size  * sizeof (T_PixelType));
 
-                SDL_RenderCopy(gSDLRenderer, texture, &lRect, &lRect);
-            }
-            else
-            {
+                SDL_Rect lRect;
+                lRect.x = 0;
+                lRect.y = 0;
+                lRect.h = K_MAP_TILE_RESOLUTION;
+                lRect.w = K_MAP_TILE_RESOLUTION;
+
+                SDL_UpdateTexture(texture , &lRect, (const void *)lTextures[i].buffer, K_MAP_TILE_RESOLUTION  * sizeof (T_PixelType));
+
+                SDL_RenderCopy(gSDLRenderer, texture, &lRectSrc, &lRectDst);
                SDL_SetRenderDrawColor(gSDLRenderer, 255,(iRing-1)*250, 0, 255);
-               SDL_RenderDrawRect(gSDLRenderer, &lRect);
+               SDL_RenderDrawRect(gSDLRenderer, &lRectDst);
+            }
+            {
+               
             }
 
         
@@ -105,13 +137,15 @@ static void renderScene()
     SDL_RenderPresent(gSDLRenderer);
 }
 
-
+void map_computeTex(T_map_texture * pTexture)
+{
+      perlinGenTexture((uint32_t *)pTexture->buffer,pTexture->posX*pTexture->size,pTexture->posY*pTexture->size,pTexture->size,K_MAP_TILE_RESOLUTION,50);
+}
 
 int main(int argc, char *argv[])
 {
 
     createWindow();
-    perlinGenGradiant();
     T_map_ctrl *lMapCtrl = map_getMapControl();
 
     SDL_Event e;
@@ -140,8 +174,7 @@ int main(int argc, char *argv[])
                     case SDLK_RIGHT :    
                         lMapCtrl->posx +=10;      
                         break;
-                    default:   
-                        perlinGenGradiant();          
+                    default:         
                         break;
                     }
                 default:

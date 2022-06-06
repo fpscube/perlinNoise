@@ -1,8 +1,10 @@
 #include "stdlib.h"
 #include <stdio.h>
+#include <math.h>
+#include <stdint.h>
 
-#define K_GRID_WIDTH    10
-#define K_GRID_HEIGHT   10
+#define K_GRID_WIDTH    100
+#define K_GRID_HEIGHT   100
 
  static float stc_gradient[K_GRID_WIDTH+1][K_GRID_HEIGHT+1][2]={0};
 
@@ -23,14 +25,33 @@
      return (dx*stc_gradient[ix][iy][0] + dy*stc_gradient[ix][iy][1]);
  }
 
-void perlinGenGradiant()
+
+/* Create pseudorandom direction vector
+ */
+void randomGradient(int ix, int iy,float *pXout,float *pYout) {
+    // No precomputed gradients mean this works for any number of grid coordinates
+    const unsigned w = 8 * sizeof(unsigned);
+    const unsigned s = w / 2; // rotation width
+    unsigned a = ix, b = iy;
+    a *= 3284157443; b ^= (a << s) | (a >> (w-s));
+    b *= 1911520717; a ^= (b << s) | (b >> (w-s));
+    a *= 2048419325;
+    float random = a * (3.14159265 / ~(~0u >> 1)); // in [0, 2*Pi]
+    *pXout = cos(random); *pYout = sin(random);
+}
+
+void perlinGenGradiant(int pX,int pY,int pSize,int pGridSize)
  {
-    for (int y=0;y<(K_GRID_HEIGHT+1);y++)
+    int gridTabSize = pSize/pGridSize;
+    for (int y=0;y<(gridTabSize+1);y++)
     {
-        for (int x=0;x<(K_GRID_WIDTH+1);x++)
+        for (int x=0;x<(gridTabSize+1);x++)
         {
-         stc_gradient[x][y][0]= (float)(rand())/(float)RAND_MAX*2.0-1.0;
-         stc_gradient[x][y][1]= (float)(rand())/(float)RAND_MAX*2.0-1.0;
+            float lRandY;
+            float lRandX;
+            randomGradient(pX + x*pGridSize,pY + y*pGridSize,&lRandX,&lRandY); 
+            stc_gradient[x][y][0]= lRandX;
+            stc_gradient[x][y][1]= lRandY;
         }
      }
 
@@ -73,14 +94,17 @@ void perlinGenGradiant()
      return value;
  }
 
-void perlinGenTexture(int * pBuffer,int pWidth,int pHeight)
+void perlinGenTexture(uint32_t * pBuffer,int pPosX,int pPosY,int pSize,int pTextureSize,int pGridSize)
 {
-    for (int x=0;x<pWidth;x++)
+    perlinGenGradiant(pPosX,pPosY,pSize,pGridSize);
+    float lPixelSize = (float)pSize/(float)pTextureSize;
+
+    for (int x=0;x<pTextureSize;x++)
     {
-        for (int y=0;y<pHeight;y++)
+        for (int y=0;y<pTextureSize;y++)
         {
-            float xGrid = ((float)x)*K_GRID_WIDTH/((float)pWidth);
-            float yGrid = ((float)y)*K_GRID_HEIGHT/((float)pHeight);
+            float xGrid = ((float)x)*lPixelSize/((float)pGridSize);
+            float yGrid = ((float)y)*lPixelSize/((float)pGridSize);
             float pixelval = perlinGetPixel(xGrid,yGrid);
             pixelval = (pixelval +1.0) /2.0;
             int pixelIntVal = (pixelval*255);
@@ -88,7 +112,7 @@ void perlinGenTexture(int * pBuffer,int pWidth,int pHeight)
                 printf("error\n");
             pixelIntVal = (pixelIntVal<<24) + (pixelIntVal<<16) + (pixelIntVal<<8) + 0xFF;
             //printf("%x\n",pixelIntVal);
-            pBuffer[x+y*pWidth] =  pixelIntVal;
+            pBuffer[x+y*pTextureSize] =  pixelIntVal;
         }
 
     }
