@@ -51,12 +51,8 @@ static void renderScene()
         gFrameBuffer[i]=0x00FF00FF;
     }
 
-    perlinGenTexture(gFrameBuffer,0,0,HEIGHT,HEIGHT,HEIGHT/10);
-
     T_map_ctrl *lMapCtrl = map_getMapControl();
 
-    SDL_UpdateTexture(texture , NULL, (const void *)gFrameBuffer, HEIGHT * sizeof (T_PixelType));
-    SDL_RenderCopy(gSDLRenderer, texture, NULL, NULL);
     for(int iRing=(K_MAP_NB_RING-1);iRing>=0;iRing--)
     {
         T_map_texture * lTextures = map_getMapTexture(iRing);
