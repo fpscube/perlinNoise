@@ -46,6 +46,7 @@ static void renderScene()
 {
     SDL_RenderClear(gSDLRenderer);
 
+    // clear frame buffer with  red color
     for(int i=0;i<20000;i++)
     {
         gFrameBuffer[i]=0x00FF00FF;
@@ -53,6 +54,8 @@ static void renderScene()
 
     T_map_ctrl *lMapCtrl = map_getMapControl();
 
+    // for all ring 9 textures
+    // Draw first low res
     for(int iRing=(K_MAP_NB_RING-1);iRing>=0;iRing--)
     {
         T_map_texture * lTextures = map_getMapTexture(iRing);
@@ -67,8 +70,9 @@ static void renderScene()
             lRectSrc.w=K_MAP_TILE_RESOLUTION;
 
 
+            // Projection of tecture using posx posy
             SDL_Rect lRectDst;
-            lRectDst.x = lTextures[i].posX*lTextures[i].size- (int)lMapCtrl->posx + WIDTH/2;
+            lRectDst.x = lTextures[i].posX*lTextures[i].size - (int)lMapCtrl->posx + WIDTH/2;
             lRectDst.y = lTextures[i].posY*lTextures[i].size - (int)lMapCtrl->posy + HEIGHT/2;
 
             lRectDst.h=lTextures[i].size ;       
@@ -102,24 +106,21 @@ static void renderScene()
                 lRectDst.h -= delta;
             }     
             
-            if(iRing>=0)        
-            {    
+       
 
-                SDL_Rect lRect;
-                lRect.x = 0;
-                lRect.y = 0;
-                lRect.h = K_MAP_TILE_RESOLUTION;
-                lRect.w = K_MAP_TILE_RESOLUTION;
+            SDL_Rect lRect;
+            lRect.x = 0;
+            lRect.y = 0;
+            lRect.h = K_MAP_TILE_RESOLUTION;
+            lRect.w = K_MAP_TILE_RESOLUTION;
 
-                SDL_UpdateTexture(texture , &lRect, (const void *)lTextures[i].buffer, K_MAP_TILE_RESOLUTION  * sizeof (T_PixelType));
+            SDL_UpdateTexture(texture , &lRect, (const void *)lTextures[i].buffer, K_MAP_TILE_RESOLUTION  * sizeof (T_PixelType));
 
-                SDL_RenderCopy(gSDLRenderer, texture, &lRectSrc, &lRectDst);
-               SDL_SetRenderDrawColor(gSDLRenderer, 255,(iRing-1)*250, 0, 255);
-               SDL_RenderDrawRect(gSDLRenderer, &lRectDst);
-            }
-            {
-               
-            }
+            SDL_RenderCopy(gSDLRenderer, texture, &lRectSrc, &lRectDst);
+            SDL_SetRenderDrawColor(gSDLRenderer, 255,(iRing-1)*250, 0, 255);
+            SDL_RenderDrawRect(gSDLRenderer, &lRectDst);
+           
+
 
         
         }
