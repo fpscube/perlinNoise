@@ -1,23 +1,11 @@
 
-TARGET ?= $(BUILD_DIR)/perlin.out
-BUILD_DIR ?= build
+.PHONY: perlin2D perlin3D
 
-CC := gcc
-SRCS := $(wildcard *.c)
-OBJS := $(patsubst %.c,build/%.o,$(wildcard *.c))
-CFLAGS := -Wall -g -O2
-LDFLAGS := -lSDL2 -lm
+perlin2D: 
+	gcc main2d.c  perlinNoise.c map.c -lSDL2 -lm -g -Wall -O2 -o perlin2D.out 
+	./perlin2D.out
 
+perlin3D: 
+	gcc main3d.c  glad.c -lglfw -lm -lGL -g -Wall -O2 -o perlin3D.out 
+	./perlin3D.out
 
-$(BUILD_DIR)/%.o: %.c  $(BUILD_DIR)
-	$(CC) -c -o $@ $< $(CFLAGS)
-
-$(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $@ $(LDFLAGS)
-	
-$(BUILD_DIR):
-	mkdir $@
-
-.PHONY: clean
-clean:
-	$(RM) $(TARGET) $(OBJS)
