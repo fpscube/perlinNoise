@@ -18,7 +18,9 @@ typedef struct
     float r, g, b;
 }T_vertexbuffer;
 
-static T_vertexbuffer vertexBuffer[K_TILE_RES*K_TILE_RES];
+static T_vertexbuffer vertexBuffer[K_TILE_SIZE*K_TILE_SIZE];
+static int indexBuffer[K_TILE_SIZE*K_TILE_SIZE];
+
  
 static const char* vertex_shader_text =
 "#version 110\n"
@@ -66,7 +68,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     {
         g_speedCoef/=2;
     }   
-    if(key == GLFW_KEY_LEFT)
+    if(key == GLFW_KEY_LEFT || key == GLFW_KEY_A)
     {
         vec3 mvDir3 = {gCamDir[0],0.0,gCamDir[2]};
         vec3_norm(mvDir3,mvDir3);
@@ -77,7 +79,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
         mat4x4_mul_vec4(gMvDir,R,mvDir);
 
     }
-    else if(key == GLFW_KEY_RIGHT)
+    else if(key == GLFW_KEY_RIGHT || key == GLFW_KEY_D)
     {
 
         vec3 mvDir3 = {gCamDir[0],0.0,gCamDir[2]};
@@ -88,13 +90,13 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
         mat4x4_rotate_Y(R,R,-1.57079632679);
         mat4x4_mul_vec4(gMvDir,R,mvDir);
     }
-    else if(key == GLFW_KEY_UP)
+    else if(key == GLFW_KEY_UP || key == GLFW_KEY_W)
     {
         gMvDir[0]= gCamDir[0];
         gMvDir[1]= gCamDir[1];
         gMvDir[2]= gCamDir[2];
     }
-    else if(key == GLFW_KEY_DOWN)
+    else if(key == GLFW_KEY_DOWN || key == GLFW_KEY_S)
     {
         gMvDir[0]= -gCamDir[0];
         gMvDir[1]= -gCamDir[1];
@@ -155,22 +157,41 @@ int main(void)
     // NOTE: OpenGL error checks have been omitted for brevity
 
     //produce terrain
-    int i=0;
+    int vcount=0;
+    int icount=0;
     float lsb = K_TILE_SIZE/K_TILE_RES;
-    for (int x=0;x<K_TILE_RES;x++)
+    for (int x=0;x<(K_TILE_RES);x++)
     {
         for (int z=0;z<K_TILE_RES;z++)
         {
             float y = groundGetY(x*lsb,z*lsb);
-            vertexBuffer[i].x=x*lsb;
-            vertexBuffer[i].y=y;
-            vertexBuffer[i].z=z*lsb;
-            vertexBuffer[i].r=1.0;
-            vertexBuffer[i].g=1.0;
-            vertexBuffer[i].b=1.0;
-            i++;
+            float lumr = (y/200.0 + 1.0);
+            float lumg = (y/100.0 + 1.0);
+            float lumb = (y/300.0 + 1.0);
+            vertexBuffer[vcount].x=x*lsb;
+            vertexBuffer[vcount].y=y;
+            vertexBuffer[vcount].z=z*lsb;
+            vertexBuffer[vcount].r=lumr;
+            vertexBuffer[vcount].g=lumg;
+            vertexBuffer[vcount].b=lumb;
+            vcount++;
+
+            if (((x+1)<K_TILE_RES) && ((z+1)<K_TILE_RES))
+            {
+                //triangle 1
+                indexBuffer[icount++] = z+x*(K_TILE_RES);
+                indexBuffer[icount++] = z+1+x*(K_TILE_RES);
+                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES);
+
+                //triangle 2
+                indexBuffer[icount++] = z+1+x*(K_TILE_RES);
+                indexBuffer[icount++] = z+1+(x+1)*(K_TILE_RES);
+                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES);
+            
+            }
         }
     }
+          
  
     glGenBuffers(1, &vertex_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
@@ -200,7 +221,14 @@ int main(void)
     glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
                           sizeof(vertexBuffer[0]), (void*) (sizeof(float) * 3));
 
- 
+    GLuint elementbuffer;
+    glGenBuffers(1, &elementbuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, icount* sizeof(unsigned int), &indexBuffer[0], GL_STATIC_DRAW);
+    
+
+    glEnable(GL_CULL_FACE);  
+
     while (!glfwWindowShouldClose(window))
     {
         double lCurrentTime = glfwGetTime();
@@ -232,7 +260,7 @@ int main(void)
         gCamPos[1] += gMvDir[1]*lDeltaTime*g_speedCoef;
         gCamPos[2] += gMvDir[2]*lDeltaTime*g_speedCoef;
 
-        printf("%f,%f,%f-%f,%f,%f\n",gCamDir[0],gCamDir[1],gCamDir[2],gCamPos[0],gCamPos[1],gCamPos[2]);
+        //printf("%f,%f,%f-%f,%f,%f\n",gCamDir[0],gCamDir[1],gCamDir[2],gCamPos[0],gCamPos[1],gCamPos[2]);
 
         ratio = width / (float) height;
  
@@ -253,7 +281,7 @@ int main(void)
  
         glUseProgram(program);
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
-        glDrawArrays(GL_LINE_STRIP, 0, K_TILE_RES*K_TILE_RES);
+        glDrawElements(GL_TRIANGLES, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
