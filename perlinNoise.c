@@ -117,3 +117,21 @@ void perlinGenTexture(uint32_t * pBuffer,int pPosX,int pPosY,int pSize,int pText
 
     }
 }
+
+
+void perlinGenHeightMap(float * pBuffer,int pPosX,int pPosY,int pSize,int pTextureSize,int pGridSize)
+{
+    perlinGenGradiant(pPosX,pPosY,pSize,pGridSize);
+    float lPixelSize = (float)pSize/(float)pTextureSize;
+
+    for (int x=0;x<pTextureSize;x++)
+    {
+        for (int y=0;y<pTextureSize;y++)
+        {
+            float xGrid = ((float)x)*lPixelSize/((float)pGridSize);
+            float yGrid = ((float)y)*lPixelSize/((float)pGridSize);
+            pBuffer[x+y*pTextureSize] =  perlinGetPixel(xGrid,yGrid);;
+        }
+
+    }
+}

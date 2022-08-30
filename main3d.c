@@ -3,23 +3,22 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
  
+#include "map.h"
+#include "perlinNoise.h"
 #include "linmath.h"
  
 #include <stdlib.h>
 #include <stdio.h>
- 
-float g_speedCoef=10.0;
- 
-#define K_TILE_RES 32
-#define K_TILE_SIZE 1000
+#define K_TILE_RES 100
+#define K_TILE_SIZE 10000
 typedef struct
 {
     float x, y,z;
     float r, g, b;
 }T_vertexbuffer;
 
-static T_vertexbuffer vertexBuffer[K_TILE_SIZE*K_TILE_SIZE];
-static int indexBuffer[K_TILE_SIZE*K_TILE_SIZE];
+static T_vertexbuffer vertexBuffer[K_TILE_RES*K_TILE_RES*6];
+static int indexBuffer[K_TILE_RES*K_TILE_RES*6];
 
  
 static const char* vertex_shader_text =
@@ -46,10 +45,23 @@ static void error_callback(int error, const char* description)
 {
     fprintf(stderr, "Error: %s\n", description);
 }
-vec3 gCamPos = {0.0,0.0,-10.0};
-vec3 gCamDir = {0.0,0.0,1.0};
+vec3 gCamPos = {486.554504,4519.624023,15592.208984};
+vec3 gCamDir = {0.336166,-0.354075,-0.872710};
 vec4 gMvDir = {0.0,0.0,0.0,0.0};
+float gCamSpeed=1000.0;
  
+
+ 
+typedef struct 
+{
+    int left;
+    int right;
+    int up;
+    int down;
+}T_media;
+
+T_media gMedia;
+
 static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -61,15 +73,23 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     }       
     if(key == GLFW_KEY_KP_ADD)
     {
-        g_speedCoef*=2;
+        gCamSpeed*=2;
 
     }         
     if(key == GLFW_KEY_KP_SUBTRACT)
     {
-        g_speedCoef/=2;
+        gCamSpeed/=2;
+    }           
+    if(key == GLFW_KEY_R)
+    {
+        
+        T_map_ctrl *lMapCtrl = map_getMapControl();
+        lMapCtrl->posx +=100;
+
     }   
     if(key == GLFW_KEY_LEFT || key == GLFW_KEY_A)
     {
+        gMedia.left = (action != GLFW_RELEASE);
         vec3 mvDir3 = {gCamDir[0],0.0,gCamDir[2]};
         vec3_norm(mvDir3,mvDir3);
         vec4 mvDir = {mvDir3[0],0.0,mvDir3[2],1.0};
@@ -81,6 +101,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     }
     else if(key == GLFW_KEY_RIGHT || key == GLFW_KEY_D)
     {
+        gMedia.right = (action != GLFW_RELEASE);
 
         vec3 mvDir3 = {gCamDir[0],0.0,gCamDir[2]};
         vec3_norm(mvDir3,mvDir3);
@@ -92,19 +113,21 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     }
     else if(key == GLFW_KEY_UP || key == GLFW_KEY_W)
     {
+        gMedia.up = (action != GLFW_RELEASE);
         gMvDir[0]= gCamDir[0];
         gMvDir[1]= gCamDir[1];
         gMvDir[2]= gCamDir[2];
     }
     else if(key == GLFW_KEY_DOWN || key == GLFW_KEY_S)
     {
+        gMedia.down = (action != GLFW_RELEASE);
         gMvDir[0]= -gCamDir[0];
         gMvDir[1]= -gCamDir[1];
         gMvDir[2]= -gCamDir[2];
         
     }
 
-    if (action == GLFW_RELEASE)
+    if (action == GLFW_RELEASE && !gMedia.up && !gMedia.down && !gMedia.left  && !gMedia.right   )
     {
         gMvDir[0]=0.0;
         gMvDir[1]=0.0;
@@ -120,6 +143,10 @@ float groundGetY(float x,float z)
   return(y);
 }
 
+void map_computeTex(T_map_texture * pTexture)
+{
+      perlinGenHeightMap((float *)pTexture->buffer,pTexture->posX*pTexture->size,pTexture->posY*pTexture->size,pTexture->size,K_MAP_TILE_RESOLUTION,50);
+}
  
 int main(void)
 {
@@ -129,6 +156,7 @@ int main(void)
     int width, height;
     static double stc_lastTime;
     stc_lastTime = glfwGetTime();
+
  
     glfwSetErrorCallback(error_callback);
  
@@ -157,23 +185,35 @@ int main(void)
     // NOTE: OpenGL error checks have been omitted for brevity
 
     //produce terrain
+  while (!glfwWindowShouldClose(window))
+  {
+    map_refresh(0);
+    T_map_texture * lTextures = map_getMapTexture(0);
+       
     int vcount=0;
     int icount=0;
-    float lsb = K_TILE_SIZE/K_TILE_RES;
-    for (int x=0;x<(K_TILE_RES);x++)
+    float lsb = K_TILE_SIZE/K_MAP_TILE_RESOLUTION;
+    for (int x=0;x<(K_MAP_TILE_RESOLUTION);x++)
     {
-        for (int z=0;z<K_TILE_RES;z++)
+        for (int z=0;z<K_MAP_TILE_RESOLUTION;z++)
         {
-            float y = groundGetY(x*lsb,z*lsb);
-            float lumr = (y/200.0 + 1.0);
-            float lumg = (y/100.0 + 1.0);
-            float lumb = (y/300.0 + 1.0);
+            float y = ((float *)(lTextures->buffer))[z+x*K_MAP_TILE_RESOLUTION];
+            if(y<0)
+            {
+                vertexBuffer[vcount].r=(y + 1.0)/2.0;
+                vertexBuffer[vcount].g=(y + 1.0)/2.0;
+                vertexBuffer[vcount].b=(y + 1.0)/2.0 + 0.5;
+            }
+            else
+            {
+                vertexBuffer[vcount].r=(y + 1.0)/2.0;
+                vertexBuffer[vcount].g=(y + 1.0)/2.0 + 0.2;
+                vertexBuffer[vcount].b=(y + 1.0)/2.0 ;
+            }
+
             vertexBuffer[vcount].x=x*lsb;
-            vertexBuffer[vcount].y=y;
+            vertexBuffer[vcount].y=y*1000;
             vertexBuffer[vcount].z=z*lsb;
-            vertexBuffer[vcount].r=lumr;
-            vertexBuffer[vcount].g=lumg;
-            vertexBuffer[vcount].b=lumb;
             vcount++;
 
             if (((x+1)<K_TILE_RES) && ((z+1)<K_TILE_RES))
@@ -229,9 +269,7 @@ int main(void)
 
     glEnable(GL_CULL_FACE);  
 
-    while (!glfwWindowShouldClose(window))
-    {
-        double lCurrentTime = glfwGetTime();
+   double lCurrentTime = glfwGetTime();
         double lDeltaTime =  lCurrentTime-stc_lastTime;
         stc_lastTime =  lCurrentTime;
 
@@ -256,9 +294,9 @@ int main(void)
             vec3_norm(gCamDir,gCamDir);
         }
 
-        gCamPos[0] += gMvDir[0]*lDeltaTime*g_speedCoef;
-        gCamPos[1] += gMvDir[1]*lDeltaTime*g_speedCoef;
-        gCamPos[2] += gMvDir[2]*lDeltaTime*g_speedCoef;
+        gCamPos[0] += gMvDir[0]*lDeltaTime*gCamSpeed;
+        gCamPos[1] += gMvDir[1]*lDeltaTime*gCamSpeed;
+        gCamPos[2] += gMvDir[2]*lDeltaTime*gCamSpeed;
 
         //printf("%f,%f,%f-%f,%f,%f\n",gCamDir[0],gCamDir[1],gCamDir[2],gCamPos[0],gCamPos[1],gCamPos[2]);
 
@@ -279,6 +317,7 @@ int main(void)
         mat4x4_perspective(p,0.785398,ratio,0.0f,10000.f);
         mat4x4_mul(mvp, p, m);
  
+
         glUseProgram(program);
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
         glDrawElements(GL_TRIANGLES, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );

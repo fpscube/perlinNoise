@@ -6,6 +6,6 @@ perlin2D:
 	./perlin2D.out
 
 perlin3D: 
-	gcc main3d.c  glad.c -lglfw -lm -lGL -g -Wall -O2 -o perlin3D.out 
+	gcc main3d.c  perlinNoise.c map.c glad.c -lglfw -lm -lGL -g -Wall -O2 -o perlin3D.out 
 	./perlin3D.out
 

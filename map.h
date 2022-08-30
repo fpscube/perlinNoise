@@ -20,13 +20,17 @@ typedef struct
     int computeId;
     int isUpToDate;
     int isInitialised;
-    int buffer[K_MAP_TILE_RESOLUTION*K_MAP_TILE_RESOLUTION];
+    void * buffer[K_MAP_TILE_RESOLUTION*K_MAP_TILE_RESOLUTION];
     /* data */
 }T_map_texture;
 
+/* used to mov the map by writing T_map_ctrl data */
 T_map_ctrl * map_getMapControl(void);
+/* used to get texture info */
 T_map_texture * map_getMapTexture(int pRing);
+/* need to be implemented by perlin noise generator for example */
 void map_computeTex(T_map_texture* pTexture);
+/* update map regarding ctrl info */
 void map_refresh(int pRing);
 
 
