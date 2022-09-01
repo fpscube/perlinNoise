@@ -6,13 +6,15 @@
 
 extern void perlinGenTexture(uint32_t * pBuffer,int pPosX,int pPosY,int pSize,int pTextureSize,int pGridSize);
 static SDL_Renderer *gSDLRenderer;
-static SDL_Texture *texture;
+static SDL_Texture *textureSGL[K_MAP_NB_RING][K_MAP_NB_TEXTURE_BY_RING];
 #define WIDTH 1024
 #define HEIGHT 768
 
 typedef uint32_t T_PixelType;
 
 T_PixelType gFrameBuffer[WIDTH*HEIGHT];
+static int gPosX=0;
+static int gPosY=0;
 
 
 static void createWindow()
@@ -29,22 +31,25 @@ static void createWindow()
 
 
     gSDLRenderer = SDL_CreateRenderer(window, -1, 0);
-#ifdef RENDER8888
-    texture = SDL_CreateTexture(gSDLRenderer,
-    SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STATIC, WIDTH, HEIGHT);
-#else
-    texture = SDL_CreateTexture(gSDLRenderer,
-    SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STATIC, WIDTH, HEIGHT);
-#endif
 
+    for(int r=0;r<(K_MAP_NB_RING);r++)
+    {
+        for(int i=0;i<(K_MAP_NB_TEXTURE_BY_RING);i++)
+        {
+            textureSGL[r][i] = SDL_CreateTexture(gSDLRenderer,
+            SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STATIC, WIDTH, HEIGHT);
+        }
+    }
 }
 
-
+#define K_TILE_RESOLUTION 100
+#define K_TILE_BASE_SIZE 100
 
 
 static void renderScene()
 {
     SDL_RenderClear(gSDLRenderer);
+
 
     // clear frame buffer with  red color
     for(int i=0;i<20000;i++)
@@ -52,31 +57,29 @@ static void renderScene()
         gFrameBuffer[i]=0x00FF00FF;
     }
 
-    T_map_ctrl *lMapCtrl = map_getMapControl();
-
+    T_map * lMap = map_update(K_TILE_BASE_SIZE,gPosX,gPosY);
     // for all ring 9 textures
     // Draw first low res
     for(int iRing=(K_MAP_NB_RING-1);iRing>=0;iRing--)
     {
-        T_map_texture * lTextures = map_getMapTexture(iRing);
-        for(int i=0;i<9;i++)
+        for(int i=0;i<K_MAP_NB_TEXTURE_BY_RING;i++)
         {
-
+            T_map_texture * lTexture = &lMap->ring[iRing].tex[i];
             SDL_Rect lRectSrc;
             lRectSrc.x = 0;
             lRectSrc.y = 0;
 
-            lRectSrc.h=K_MAP_TILE_RESOLUTION;
-            lRectSrc.w=K_MAP_TILE_RESOLUTION;
+            lRectSrc.h=K_TILE_RESOLUTION;
+            lRectSrc.w=K_TILE_RESOLUTION;
 
 
             // Projection of tecture using posx posy
             SDL_Rect lRectDst;
-            lRectDst.x = lTextures[i].posX*lTextures[i].size - (int)lMapCtrl->posx + WIDTH/2;
-            lRectDst.y = lTextures[i].posY*lTextures[i].size - (int)lMapCtrl->posy + HEIGHT/2;
+            lRectDst.x = lTexture->posX - (int)gPosX + WIDTH/2;
+            lRectDst.y = lTexture->posY - (int)gPosY + HEIGHT/2;
 
-            lRectDst.h=lTextures[i].size ;       
-            lRectDst.w=lTextures[i].size ;  
+            lRectDst.h=lTexture->size ;       
+            lRectDst.w=lTexture->size ;  
 
             int ringCoef = pow(3,iRing);  
 
@@ -111,18 +114,23 @@ static void renderScene()
             SDL_Rect lRect;
             lRect.x = 0;
             lRect.y = 0;
-            lRect.h = K_MAP_TILE_RESOLUTION;
-            lRect.w = K_MAP_TILE_RESOLUTION;
+            lRect.h = K_TILE_RESOLUTION;
+            lRect.w = K_TILE_RESOLUTION;
 
-            SDL_UpdateTexture(texture , &lRect, (const void *)lTextures[i].buffer, K_MAP_TILE_RESOLUTION  * sizeof (T_PixelType));
+            static uint32_t stc_perlinTexture[K_TILE_RESOLUTION*K_TILE_RESOLUTION];
+            if(!lTexture->isUpToDate)
+            {
+                printf("genText ring:%d tex:%d ",iRing,i);
+                printf(" x:%d y:%d\n",lTexture->posX,lTexture->posY);
 
-            SDL_RenderCopy(gSDLRenderer, texture, &lRectSrc, &lRectDst);
+                perlinGenTexture((uint32_t *)stc_perlinTexture,lTexture->posX,lTexture->posY,lTexture->size,K_TILE_RESOLUTION,50);
+            
+                SDL_UpdateTexture(textureSGL[iRing][i] , &lRect, (const void *)stc_perlinTexture, K_TILE_RESOLUTION  * sizeof (T_PixelType));
+            }
+            SDL_RenderCopy(gSDLRenderer, textureSGL[iRing][i] , &lRectSrc, &lRectDst);
             SDL_SetRenderDrawColor(gSDLRenderer, 255,(iRing-1)*250, 0, 255);
             SDL_RenderDrawRect(gSDLRenderer, &lRectDst);
-           
-
-
-        
+                  
         }
     }
 
@@ -134,16 +142,10 @@ static void renderScene()
     SDL_RenderPresent(gSDLRenderer);
 }
 
-void map_computeTex(T_map_texture * pTexture)
-{
-      perlinGenTexture((uint32_t *)pTexture->buffer,pTexture->posX*pTexture->size,pTexture->posY*pTexture->size,pTexture->size,K_MAP_TILE_RESOLUTION,50);
-}
-
 int main(int argc, char *argv[])
 {
 
     createWindow();
-    T_map_ctrl *lMapCtrl = map_getMapControl();
 
     SDL_Event e;
     for (;;) {
@@ -160,16 +162,16 @@ int main(int argc, char *argv[])
                 case SDL_KEYDOWN:    
                     switch(e.key.keysym.sym){
                     case SDLK_UP : 
-                        lMapCtrl->posy -=10;              
+                        gPosY -=10;              
                         break;
                     case SDLK_DOWN :    
-                        lMapCtrl->posy +=10;       
+                        gPosY +=10;       
                         break;
                     case SDLK_LEFT :   
-                        lMapCtrl->posx -=10;             
+                        gPosX -=10;             
                         break;
                     case SDLK_RIGHT :    
-                        lMapCtrl->posx +=10;      
+                        gPosX +=10;      
                         break;
                     default:         
                         break;
@@ -180,9 +182,6 @@ int main(int argc, char *argv[])
         }
         SDL_Delay(10);
 
-        for(int iRing=0;iRing<K_MAP_NB_RING;iRing++)
-        {
-            map_refresh(iRing);
-        }
+        
     }
 }

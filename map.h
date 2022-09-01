@@ -1,38 +1,35 @@
 #ifndef _MAP_
 #define _MAP_
 
-#define K_MAP_TILE_RESOLUTION 100
 #define K_MAP_NB_RING 3
+#define K_MAP_NB_TEXTURE_BY_RING 9
 
 typedef struct 
 {
-    float posx;
-    float posy;
-}T_map_ctrl;
-
-
-typedef struct 
-{
-    int posX;
-    int posY;
+    int posX; //x pos of the corner upper left of the tile
+    int posY; //y pos of the corner upper left of the tile
     int size;
+    int gridPosX; 
+    int gridPosY; 
     int tileId;
     int computeId;
     int isUpToDate;
     int isInitialised;
-    void * buffer[K_MAP_TILE_RESOLUTION*K_MAP_TILE_RESOLUTION];
-    /* data */
 }T_map_texture;
 
-/* used to mov the map by writing T_map_ctrl data */
-T_map_ctrl * map_getMapControl(void);
-/* used to get texture info */
-T_map_texture * map_getMapTexture(int pRing);
-/* need to be implemented by perlin noise generator for example */
-void map_computeTex(T_map_texture* pTexture);
-/* update map regarding ctrl info */
-void map_refresh(int pRing);
+typedef struct
+{
+    T_map_texture tex[K_MAP_NB_TEXTURE_BY_RING];
+}T_map_ring;
 
+typedef struct
+{
+    T_map_ring ring[K_MAP_NB_RING];
+}T_map;
+
+
+/* update update regarding position */
+T_map * map_update(int pTileBaseSize,int pPosX,int pPosY);
 
 
 #endif

@@ -3,8 +3,7 @@
 #include <math.h>
 
 
-static T_map_ctrl stc_map_ctrl={0};
-static T_map_texture stc_map_texture[K_MAP_NB_RING][9]={0};
+static T_map stc_map={0};
 
 const int cst_offsetToTileId[3][3] ={{1,4,6},{2,0,7},{3,5,8}};
 
@@ -33,33 +32,20 @@ typedef struct
 
 static T_tile stc_map_grid[K_MAP_NB_RING][9]={0};
 
-
-T_map_ctrl * map_getMapControl(void)
-{
-    return &stc_map_ctrl;
-}
-
-
-T_map_texture * map_getMapTexture(int pRing)
-{
-    return &stc_map_texture[pRing][0];
-}
-
-
-
-void map_refresh(int pRing)
+static void map__updateRing(int pRing,int pTileBaseSize,float pPosX,float pPosY)
 {
     T_tile *lGrid = &stc_map_grid[pRing][0];
-    T_map_texture *lTextures = &stc_map_texture[pRing][0];
+    T_map_texture *lTextures = &stc_map.ring[pRing].tex[0];
+
 
    // printf("%f,%f\n",stc_map_ctrl.posx,stc_map_ctrl.posy);
 
     //Update Tile position
-    int lTileDimension = K_MAP_TILE_RESOLUTION * powl(3,pRing);
-    int posXint =  (int)stc_map_ctrl.posx/lTileDimension;
-    int posYint =  (int)stc_map_ctrl.posy/lTileDimension;
-    if(stc_map_ctrl.posx<0)posXint = posXint-1;
-    if(stc_map_ctrl.posy<0)posYint = posYint-1;
+    int lTileDimension = pTileBaseSize * powl(3,pRing);
+    int posXint =  pPosX/lTileDimension;
+    int posYint =  pPosY/lTileDimension;
+    if(pPosX<0)posXint = posXint-1;
+    if(pPosY<0)posYint = posYint-1;
     lGrid[0].posX = posXint;
     lGrid[0].posY = posYint;
     //First ring
@@ -75,14 +61,15 @@ void map_refresh(int pRing)
         lGrid[i].textureId = -1;
         lTextures[i].tileId = -1;
         lTextures[i].size = lTileDimension  ;   
+        lTextures[i].isUpToDate = 1;
     }
 
     //Associate existing texture to corresponding tile
     for(int i=0;i<9;i++)
     {
         if(!lTextures[i].isInitialised) continue;
-        int xOffset =  (lTextures[i].posX - posXint);
-        int yOffset =  (lTextures[i].posY - posYint);
+        int xOffset =  (lTextures[i].gridPosX - posXint);
+        int yOffset =  (lTextures[i].gridPosY - posYint);
         if (xOffset<-1 || xOffset>1 || yOffset<-1 || yOffset>1) continue;
         int tileId = cst_offsetToTileId[xOffset+1][yOffset+1];
         lGrid[tileId].textureId = i;
@@ -101,38 +88,27 @@ void map_refresh(int pRing)
             {
                 lGrid[iTile].textureId = iTexture;
                 lTextures[iTexture].tileId = iTile;
-                lTextures[iTexture].posX = lGrid[iTile].posX;
-                lTextures[iTexture].posY = lGrid[iTile].posY;
+                lTextures[iTexture].posX = lGrid[iTile].posX  * lTileDimension;
+                lTextures[iTexture].posY = lGrid[iTile].posY  * lTileDimension;
+                lTextures[iTexture].gridPosX = lGrid[iTile].posX;
+                lTextures[iTexture].gridPosY = lGrid[iTile].posY;
                 lTextures[iTexture].computeId = 0;
                 lTextures[iTexture].isUpToDate = 0;
                 lTextures[iTexture].isInitialised=1;   
-                printf("tile %d new texture %d  x:%d y:%d\n",iTile,iTexture,lTextures[iTexture].posX,lTextures[iTexture].posY);
+                //printf("tile %d new texture %d  x:%d y:%d\n",iTile,iTexture,lTextures[iTexture].posX,lTextures[iTexture].posY);
                 break;
             }
         }
     }
 
-    //Compute texture by priority order 0-9 grid
-    for(int iTile=0;iTile<9;iTile++)
-    {
-        int lTextureId = lGrid[iTile].textureId;
-        if(!lTextures[lTextureId].isUpToDate)
-        {
-            map_computeTex(&lTextures[lTextureId]);
-            lTextures[lTextureId].isUpToDate=1;
 
-        }     
-    }
-
-        for(int i=0;i<9;i++)
-    {
-       // printf("tile %d => texture %d x:%d y:%d\n",i,lGrid[i].textureId,lGrid[i].posX*K_MAP_TILE_DIMENSION,lGrid[i].posY*K_MAP_TILE_DIMENSION);
-    }
-
-
-    for(int i=0;i<9;i++)
-    {
-      //  printf("text %d => tile %d x:%d y:%d\n",i,lTextures[i].tileId,lTextures[i].posX*K_MAP_TILE_DIMENSION,lTextures[i].posY*K_MAP_TILE_DIMENSION);
-    }
 }
 
+T_map *map_update(int pTileBaseSize,int pPosX,int pPosY)
+{
+    for(int iRing=0;iRing<K_MAP_NB_RING;iRing++)
+    {
+        map__updateRing(iRing,pTileBaseSize,pPosX,pPosY);
+    }
+    return &stc_map;
+}

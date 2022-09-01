@@ -3,10 +3,9 @@
 #include <math.h>
 #include <stdint.h>
 
-#define K_GRID_WIDTH    100
-#define K_GRID_HEIGHT   100
+#define K_GRID_SIZE    100
 
- static float stc_gradient[K_GRID_WIDTH+1][K_GRID_HEIGHT+1][2]={0};
+ static float stc_gradient[K_GRID_SIZE+1][K_GRID_SIZE+1][2]={0};
 
  // Function to linearly interpolate between a0 and a1
  // Weight w should be in the range [0.0, 1.0]
@@ -96,6 +95,11 @@ void perlinGenGradiant(int pX,int pY,int pSize,int pGridSize)
 
 void perlinGenTexture(uint32_t * pBuffer,int pPosX,int pPosY,int pSize,int pTextureSize,int pGridSize)
 {
+    if((pSize/pGridSize) > K_GRID_SIZE) 
+    {
+        printf("error perlin grid must be < %d",K_GRID_SIZE);
+        exit(1);
+    }
     perlinGenGradiant(pPosX,pPosY,pSize,pGridSize);
     float lPixelSize = (float)pSize/(float)pTextureSize;
 
@@ -120,7 +124,14 @@ void perlinGenTexture(uint32_t * pBuffer,int pPosX,int pPosY,int pSize,int pText
 
 
 void perlinGenHeightMap(float * pBuffer,int pPosX,int pPosY,int pSize,int pTextureSize,int pGridSize)
-{
+{   
+    
+    if((pSize/pGridSize) > K_GRID_SIZE) 
+    {
+        printf("error perlin grid must be < %d\n",K_GRID_SIZE);
+        exit(1);
+    }
+
     perlinGenGradiant(pPosX,pPosY,pSize,pGridSize);
     float lPixelSize = (float)pSize/(float)pTextureSize;
 
@@ -130,7 +141,7 @@ void perlinGenHeightMap(float * pBuffer,int pPosX,int pPosY,int pSize,int pTextu
         {
             float xGrid = ((float)x)*lPixelSize/((float)pGridSize);
             float yGrid = ((float)y)*lPixelSize/((float)pGridSize);
-            pBuffer[x+y*pTextureSize] =  perlinGetPixel(xGrid,yGrid);;
+            pBuffer[x+y*pTextureSize] =  perlinGetPixel(xGrid,yGrid);
         }
 
     }

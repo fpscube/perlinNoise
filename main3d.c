@@ -9,8 +9,8 @@
  
 #include <stdlib.h>
 #include <stdio.h>
-#define K_TILE_RES 100
-#define K_TILE_SIZE 10000
+#define K_TILE_RES 64
+#define K_TILE_SIZE 1000
 typedef struct
 {
     float x, y,z;
@@ -19,7 +19,7 @@ typedef struct
 
 static T_vertexbuffer vertexBuffer[K_TILE_RES*K_TILE_RES*6];
 static int indexBuffer[K_TILE_RES*K_TILE_RES*6];
-
+GLint mvp_location, vpos_location, vcol_location;
  
 static const char* vertex_shader_text =
 "#version 110\n"
@@ -50,6 +50,7 @@ vec3 gCamDir = {0.336166,-0.354075,-0.872710};
 vec4 gMvDir = {0.0,0.0,0.0,0.0};
 float gCamSpeed=1000.0;
  
+GLenum  gRenderType = GL_TRIANGLES;
 
  
 typedef struct 
@@ -68,9 +69,26 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     if(key == GLFW_KEY_SPACE)
     {
-        gCamPos[1]+=10;
+        gCamPos[1]+=100;
 
-    }       
+    }        
+    if(key == GLFW_KEY_L)
+    {
+        gRenderType = GL_LINES;
+    }     
+    if(key == GLFW_KEY_T)
+    {
+        gRenderType = GL_TRIANGLES;
+    }
+    if(key == GLFW_KEY_R)
+    {
+
+        gCamPos[0] = 0;
+        gCamPos[1] = 0;
+        gCamPos[2] = 0;
+        gCamSpeed=1000.0;
+
+    }      
     if(key == GLFW_KEY_KP_ADD)
     {
         gCamSpeed*=2;
@@ -80,13 +98,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     {
         gCamSpeed/=2;
     }           
-    if(key == GLFW_KEY_R)
-    {
-        
-        T_map_ctrl *lMapCtrl = map_getMapControl();
-        lMapCtrl->posx +=100;
 
-    }   
     if(key == GLFW_KEY_LEFT || key == GLFW_KEY_A)
     {
         gMedia.left = (action != GLFW_RELEASE);
@@ -145,14 +157,80 @@ float groundGetY(float x,float z)
 
 void map_computeTex(T_map_texture * pTexture)
 {
-      perlinGenHeightMap((float *)pTexture->buffer,pTexture->posX*pTexture->size,pTexture->posY*pTexture->size,pTexture->size,K_MAP_TILE_RESOLUTION,50);
 }
  
+GLuint vertex_buffer;
+GLuint elementbuffer;
+
+void drawMapTile(T_map_texture *pMapTexture)
+{
+    static float perlinHeightMap[K_TILE_RES*K_TILE_RES];
+   // if(!lTexture->isUpToDate)
+    {
+        perlinGenHeightMap((float *)perlinHeightMap,pMapTexture->posX,pMapTexture->posY,pMapTexture->size,K_TILE_RES,1000);
+    }
+       
+    int vcount=0;
+    int icount=0;
+    float lsb =  pMapTexture->size/K_TILE_RES;
+    for (int x=0;x<(K_TILE_RES);x++)
+    {
+        for (int z=0;z<K_TILE_RES;z++)
+        {
+            float y = ((float *)(perlinHeightMap))[z+x*K_TILE_RES];
+            if(y<0)
+            {
+                vertexBuffer[vcount].r=(y + 1.0)/2.0;
+                vertexBuffer[vcount].g=(y + 1.0)/2.0;
+                vertexBuffer[vcount].b=(y + 1.0)/2.0 + 0.5;
+            }
+            else
+            {
+                vertexBuffer[vcount].r=(y + 1.0)/2.0;
+                vertexBuffer[vcount].g=(y + 1.0)/2.0 + 0.2;
+                vertexBuffer[vcount].b=(y + 1.0)/2.0 ;
+            }
+
+            vertexBuffer[vcount].x=x*lsb + pMapTexture->posX;
+            vertexBuffer[vcount].y=y*1000;
+            vertexBuffer[vcount].z=z*lsb + pMapTexture->posY;
+            vcount++;
+
+            if (((x+1)<K_TILE_RES) && ((z+1)<K_TILE_RES))
+            {
+                //triangle 1
+                indexBuffer[icount++] = z+x*(K_TILE_RES);
+                indexBuffer[icount++] = z+1+x*(K_TILE_RES);
+                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES);
+
+                //triangle 2
+                indexBuffer[icount++] = z+1+x*(K_TILE_RES);
+                indexBuffer[icount++] = z+1+(x+1)*(K_TILE_RES);
+                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES);
+            
+            }
+        }
+    }
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertexBuffer), vertexBuffer, GL_STATIC_DRAW);
+ 
+   
+    glVertexAttribPointer(vpos_location, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertexBuffer[0]), (void*) 0);
+                          
+    glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertexBuffer[0]), (void*) (sizeof(float) * 3));
+
+
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, icount* sizeof(unsigned int), &indexBuffer[0], GL_STATIC_DRAW);
+          
+    glDrawElements(gRenderType, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
+}
+
 int main(void)
 {
     GLFWwindow* window;
-    GLuint vertex_buffer, vertex_shader, fragment_shader, program;
-    GLint mvp_location, vpos_location, vcol_location;
+    GLuint  vertex_shader, fragment_shader, program;
     int width, height;
     static double stc_lastTime;
     stc_lastTime = glfwGetTime();
@@ -183,60 +261,6 @@ int main(void)
     glfwSwapInterval(1);
  
     // NOTE: OpenGL error checks have been omitted for brevity
-
-    //produce terrain
-  while (!glfwWindowShouldClose(window))
-  {
-    map_refresh(0);
-    T_map_texture * lTextures = map_getMapTexture(0);
-       
-    int vcount=0;
-    int icount=0;
-    float lsb = K_TILE_SIZE/K_MAP_TILE_RESOLUTION;
-    for (int x=0;x<(K_MAP_TILE_RESOLUTION);x++)
-    {
-        for (int z=0;z<K_MAP_TILE_RESOLUTION;z++)
-        {
-            float y = ((float *)(lTextures->buffer))[z+x*K_MAP_TILE_RESOLUTION];
-            if(y<0)
-            {
-                vertexBuffer[vcount].r=(y + 1.0)/2.0;
-                vertexBuffer[vcount].g=(y + 1.0)/2.0;
-                vertexBuffer[vcount].b=(y + 1.0)/2.0 + 0.5;
-            }
-            else
-            {
-                vertexBuffer[vcount].r=(y + 1.0)/2.0;
-                vertexBuffer[vcount].g=(y + 1.0)/2.0 + 0.2;
-                vertexBuffer[vcount].b=(y + 1.0)/2.0 ;
-            }
-
-            vertexBuffer[vcount].x=x*lsb;
-            vertexBuffer[vcount].y=y*1000;
-            vertexBuffer[vcount].z=z*lsb;
-            vcount++;
-
-            if (((x+1)<K_TILE_RES) && ((z+1)<K_TILE_RES))
-            {
-                //triangle 1
-                indexBuffer[icount++] = z+x*(K_TILE_RES);
-                indexBuffer[icount++] = z+1+x*(K_TILE_RES);
-                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES);
-
-                //triangle 2
-                indexBuffer[icount++] = z+1+x*(K_TILE_RES);
-                indexBuffer[icount++] = z+1+(x+1)*(K_TILE_RES);
-                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES);
-            
-            }
-        }
-    }
-          
- 
-    glGenBuffers(1, &vertex_buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertexBuffer), vertexBuffer, GL_STATIC_DRAW);
- 
     vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
     glCompileShader(vertex_shader);
@@ -253,23 +277,25 @@ int main(void)
     mvp_location = glGetUniformLocation(program, "MVP");
     vpos_location = glGetAttribLocation(program, "vPos");
     vcol_location = glGetAttribLocation(program, "vCol");
+     
  
     glEnableVertexAttribArray(vpos_location);
-    glVertexAttribPointer(vpos_location, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(vertexBuffer[0]), (void*) 0);
     glEnableVertexAttribArray(vcol_location);
-    glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(vertexBuffer[0]), (void*) (sizeof(float) * 3));
+    glGenBuffers(1, &vertex_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 
-    GLuint elementbuffer;
+    
     glGenBuffers(1, &elementbuffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, icount* sizeof(unsigned int), &indexBuffer[0], GL_STATIC_DRAW);
-    
+		
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    //glEnable(GL_DEPTH_TEST); 
+    //glEnable(GL_CULL_FACE);    
 
-    glEnable(GL_CULL_FACE);  
-
-   double lCurrentTime = glfwGetTime();
+  while (!glfwWindowShouldClose(window))
+  {
+        double lCurrentTime = glfwGetTime();
         double lDeltaTime =  lCurrentTime-stc_lastTime;
         stc_lastTime =  lCurrentTime;
 
@@ -303,7 +329,7 @@ int main(void)
         ratio = width / (float) height;
  
         glViewport(0, 0, width, height);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
  
         mat4x4_identity(m);
         vec3 eye = {gCamPos[0], gCamPos[1], gCamPos[2]};
@@ -320,10 +346,26 @@ int main(void)
 
         glUseProgram(program);
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
-        glDrawElements(GL_TRIANGLES, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
+
+        
+        T_map * lMap = map_update(K_TILE_SIZE*10,gCamPos[0],gCamPos[2]);
+        for(int iRing=0;iRing<1;iRing++)
+        {
+            for(int texId=0;texId<1;texId++)
+            {
+                drawMapTile(&lMap->ring[iRing].tex[texId]);
+            }
+        }
+        // drawMapTile(&lMap->ring[0].tex[0]);
+        // drawMapTile(&lMap->ring[0].tex[1]);
+
         glfwSwapBuffers(window);
+        static counter=0;
         glfwPollEvents();
+        printf(" - PollEvents %d\n",(counter++)%50);
+
     }
+    
  
     glfwDestroyWindow(window);
  
