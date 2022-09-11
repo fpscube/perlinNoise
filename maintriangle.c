@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "linmath.h"
 
 #include "glad.h"
 #include <GLFW/glfw3.h>
@@ -17,10 +18,11 @@ static const float VERTICES[] = {
  
 static const char *VERTEX_SHADER_SOURCE =
     "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
+    "in vec3 aPos;\n"
+    "uniform mat4 MVP;\n"
     "void main()\n"
     "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    "   gl_Position = MVP *  vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
     "}\n"
     "\0";
  
@@ -34,12 +36,16 @@ static const char *FRAGMENT_SHADER_SOURCE =
     "}\n"
     "\0";
 
+
+float   ratio=1.0;
+
 static void error_callback(int err, const char *msg) {
     fprintf(stderr, "GLFW callback: %s (error code %d)\n", msg, err);
 }
 
 static void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     UNUSED(window);
+    ratio = width / (float) height;
     glViewport(0, 0, width, height);
 }
 
@@ -118,6 +124,7 @@ int main(void) {
     vertex_shader   = compile_shader(GL_VERTEX_SHADER,   VERTEX_SHADER_SOURCE);
     fragment_shader = compile_shader(GL_FRAGMENT_SHADER, FRAGMENT_SHADER_SOURCE);
 
+
     program = glCreateProgram();
     glAttachShader(program, vertex_shader);
     glAttachShader(program, fragment_shader);
@@ -133,6 +140,14 @@ int main(void) {
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
 
+    
+    	// Get a handle for our "MVP" uniform
+	GLuint MVP = glGetUniformLocation(program, "MVP");
+ 
+	// Get a handle for our buffers
+	GLuint aPos = glGetAttribLocation(program, "aPos");
+
+
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glBindVertexArray(VAO);
@@ -140,8 +155,8 @@ int main(void) {
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(VERTICES), VERTICES, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(aPos, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void *)0);
+    glEnableVertexAttribArray(aPos);
       
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSwapInterval(1);
@@ -153,9 +168,20 @@ int main(void) {
     //glEnable(GL_CULL_FACE);    
 
 
+
+
     while (!glfwWindowShouldClose(window)) {
         glClearColor(0.7f, 0.8f, 0.7f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        {
+ 
+            mat4x4 m, p, mvp;
+            mat4x4_identity(m);
+            mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
+            mat4x4_mul(mvp, p, m);
+            glUniformMatrix4fv(MVP, 1, GL_FALSE, (const GLfloat*) mvp);
+        }
 
         glUseProgram(program);
         glBindVertexArray(VAO);
