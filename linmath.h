@@ -397,6 +397,9 @@ LINMATH_H_FUNC void mat4x4_perspective(mat4x4 m, float y_fov, float aspect, floa
 	m[3][2] = -((2.f * f * n) / (f - n));
 	m[3][3] = 0.f;
 }
+
+
+
 LINMATH_H_FUNC void mat4x4_look_at(mat4x4 m, vec3 const eye, vec3 const center, vec3 const up)
 {
 	/* Adapted from Android's OpenGL Matrix.java.                        */

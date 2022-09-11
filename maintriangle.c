@@ -41,7 +41,7 @@ float gScreenRatio=1.0;
 vec3 gCamPos = {0,0,0};
 vec3 gCamDir = {0.336166,-0.354075,-0.872710};
 vec4 gMvDir = {0.0,0.0,0.0,0.0};
-float gCamSpeed=1000.0;
+float gCamSpeed=1.0;
 
 
 GLenum  gRenderType = GL_TRIANGLES;
@@ -80,7 +80,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
         gCamPos[0] = 0;
         gCamPos[1] = 0;
         gCamPos[2] = 0;
-        gCamSpeed=1000.0;
+        gCamSpeed=1.0;
 
     }      
     if(key == GLFW_KEY_KP_ADD)
@@ -286,9 +286,7 @@ int main(void) {
         double lDeltaTime =  lCurrentTime-stc_lastTime;
         stc_lastTime =  lCurrentTime;
 
-        float ratio;
         glfwGetFramebufferSize(window, &width, &height);
-        mat4x4 m, p, mvp;
         double xcursor;
         double ycursor;
         glfwGetCursorPos(window,&xcursor,&ycursor);
@@ -314,7 +312,7 @@ int main(void) {
         printf("%f,%f,%f-%f,%f,%f\n",gCamDir[0],gCamDir[1],gCamDir[2],gCamPos[0],gCamPos[1],gCamPos[2]);
 
 
-        glClearColor(0.7f, 0.8f, 0.7f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         {
@@ -324,10 +322,10 @@ int main(void) {
 
             mat4x4 m, p, mvp;
             mat4x4_identity(m);
-            // mat4x4_translate_in_place(m, gCamPos[0],gCamPos[1],gCamPos[2] );
-            // mat4x4_look_at(m,eye,center,up);
-            mat4x4_ortho(p, -gScreenRatio, gScreenRatio, -1.f, 1.f, 1.f, -1.f);
-            // mat4x4_perspective(p,0.785398,gScreenRatio,0.0f,10000.f);
+            mat4x4_translate_in_place(m, gCamPos[0],gCamPos[1],gCamPos[2] );
+            mat4x4_look_at(m,eye,center,up);
+            //mat4x4_ortho(p, -gScreenRatio, gScreenRatio, -1.f, 1.f, 1.f, -1.f);
+            mat4x4_perspective(p,0.785398,gScreenRatio,-1.0f,1.f);
             mat4x4_mul(mvp, p, m);
             glUniformMatrix4fv(MVP, 1, GL_FALSE, (const GLfloat*) mvp);
 

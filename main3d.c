@@ -290,7 +290,7 @@ int main(void)
 		
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
-    //glEnable(GL_DEPTH_TEST); 
+    glEnable(GL_DEPTH_TEST); 
     //glEnable(GL_CULL_FACE);    
 
   while (!glfwWindowShouldClose(window))
@@ -340,7 +340,7 @@ int main(void)
        // mat4x4_rotate_Z(m, m, (float) glfwGetTime());
         //mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 10.f, -10.f);
         //mat4x4_frustum(p, -ratio, ratio, -1.f, 1.f, 10.f, 10000.f);
-        mat4x4_perspective(p,0.785398,ratio,0.0f,10000.f);
+        mat4x4_perspective(p,0.785398,ratio,1.0f,100000.f);
         mat4x4_mul(mvp, p, m);
  
 
@@ -351,7 +351,7 @@ int main(void)
         T_map * lMap = map_update(K_TILE_SIZE*10,gCamPos[0],gCamPos[2]);
         for(int iRing=0;iRing<1;iRing++)
         {
-            for(int texId=0;texId<1;texId++)
+            for(int texId=0;texId<K_MAP_NB_TEXTURE_BY_RING;texId++)
             {
                 drawMapTile(&lMap->ring[iRing].tex[texId]);
             }
