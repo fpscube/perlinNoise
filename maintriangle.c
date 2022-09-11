@@ -37,7 +37,110 @@ static const char *FRAGMENT_SHADER_SOURCE =
     "\0";
 
 
-float   ratio=1.0;
+float gScreenRatio=1.0;
+vec3 gCamPos = {0,0,0};
+vec3 gCamDir = {0.336166,-0.354075,-0.872710};
+vec4 gMvDir = {0.0,0.0,0.0,0.0};
+float gCamSpeed=1000.0;
+
+
+GLenum  gRenderType = GL_TRIANGLES;
+
+ 
+typedef struct 
+{
+    int left;
+    int right;
+    int up;
+    int down;
+}T_media;
+
+T_media gMedia;
+
+static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    if(key == GLFW_KEY_SPACE)
+    {
+        gCamPos[1]+=100;
+
+    }        
+    if(key == GLFW_KEY_L)
+    {
+        gRenderType = GL_LINES;
+    }     
+    if(key == GLFW_KEY_T)
+    {
+        gRenderType = GL_TRIANGLES;
+    }
+    if(key == GLFW_KEY_R)
+    {
+
+        gCamPos[0] = 0;
+        gCamPos[1] = 0;
+        gCamPos[2] = 0;
+        gCamSpeed=1000.0;
+
+    }      
+    if(key == GLFW_KEY_KP_ADD)
+    {
+        gCamSpeed*=2;
+
+    }         
+    if(key == GLFW_KEY_KP_SUBTRACT)
+    {
+        gCamSpeed/=2;
+    }           
+
+    if(key == GLFW_KEY_LEFT || key == GLFW_KEY_A)
+    {
+        gMedia.left = (action != GLFW_RELEASE);
+        vec3 mvDir3 = {gCamDir[0],0.0,gCamDir[2]};
+        vec3_norm(mvDir3,mvDir3);
+        vec4 mvDir = {mvDir3[0],0.0,mvDir3[2],1.0};
+        mat4x4 R;
+        mat4x4_identity(R);
+        mat4x4_rotate_Y(R,R,1.57079632679);
+        mat4x4_mul_vec4(gMvDir,R,mvDir);
+
+    }
+    else if(key == GLFW_KEY_RIGHT || key == GLFW_KEY_D)
+    {
+        gMedia.right = (action != GLFW_RELEASE);
+
+        vec3 mvDir3 = {gCamDir[0],0.0,gCamDir[2]};
+        vec3_norm(mvDir3,mvDir3);
+        vec4 mvDir = {mvDir3[0],0.0,mvDir3[2],1.0};
+        mat4x4 R;
+        mat4x4_identity(R);
+        mat4x4_rotate_Y(R,R,-1.57079632679);
+        mat4x4_mul_vec4(gMvDir,R,mvDir);
+    }
+    else if(key == GLFW_KEY_UP || key == GLFW_KEY_W)
+    {
+        gMedia.up = (action != GLFW_RELEASE);
+        gMvDir[0]= gCamDir[0];
+        gMvDir[1]= gCamDir[1];
+        gMvDir[2]= gCamDir[2];
+    }
+    else if(key == GLFW_KEY_DOWN || key == GLFW_KEY_S)
+    {
+        gMedia.down = (action != GLFW_RELEASE);
+        gMvDir[0]= -gCamDir[0];
+        gMvDir[1]= -gCamDir[1];
+        gMvDir[2]= -gCamDir[2];
+        
+    }
+
+    if (action == GLFW_RELEASE && !gMedia.up && !gMedia.down && !gMedia.left  && !gMedia.right   )
+    {
+        gMvDir[0]=0.0;
+        gMvDir[1]=0.0;
+        gMvDir[2]=0.0;
+    }
+
+}
 
 static void error_callback(int err, const char *msg) {
     fprintf(stderr, "GLFW callback: %s (error code %d)\n", msg, err);
@@ -45,7 +148,7 @@ static void error_callback(int err, const char *msg) {
 
 static void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     UNUSED(window);
-    ratio = width / (float) height;
+    gScreenRatio = width / (float) height;
     glViewport(0, 0, width, height);
 }
 
@@ -69,6 +172,9 @@ static unsigned compile_shader(GLenum shader_type, const char *shader_src) {
 
 int main(void) {
     GLFWwindow *window;
+    int width, height;
+    static double stc_lastTime;
+    stc_lastTime = glfwGetTime();
     const char *msg;
     unsigned vertex_buffer, vertex_shader;
     int success;
@@ -95,7 +201,7 @@ int main(void) {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
-    window = glfwCreateWindow(800, 600, "Hello, Triangle!", NULL, NULL);
+    window = glfwCreateWindow(800, 800, "Hello, Triangle!", NULL, NULL);
     if (!window) {
         fputs("error: unable to create window\n", stderr);
         glfwTerminate();
@@ -108,6 +214,13 @@ int main(void) {
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
+
+
+    glfwGetFramebufferSize(window, &width, &height);    
+    gScreenRatio = width / (float) height;
+    glfwSetInputMode(window,GLFW_CURSOR,GLFW_CURSOR_HIDDEN);
+    glfwSetCursorPos(window,width/2.0,height/2.0);
+    glfwSetKeyCallback(window, key_callback);
 
     msg = (const char *)glGetString(GL_VERSION);
     if (!msg) {
@@ -168,19 +281,56 @@ int main(void) {
     //glEnable(GL_CULL_FACE);    
 
 
-
-
     while (!glfwWindowShouldClose(window)) {
+        double lCurrentTime = glfwGetTime();
+        double lDeltaTime =  lCurrentTime-stc_lastTime;
+        stc_lastTime =  lCurrentTime;
+
+        float ratio;
+        glfwGetFramebufferSize(window, &width, &height);
+        mat4x4 m, p, mvp;
+        double xcursor;
+        double ycursor;
+        glfwGetCursorPos(window,&xcursor,&ycursor);
+        glfwSetCursorPos(window,width/2.0,height/2.0);
+        double xDelta = width/2.0 - xcursor;
+        double yDelta = height/2.0 - ycursor;
+
+        {
+            vec3 up = {0,1,0};
+            vec3 hVector;
+            vec3_mul_cross(hVector, gCamDir, up);
+            vec3_norm(hVector,hVector);
+            gCamDir[0] -= hVector[0]* xDelta/1000.0;
+            gCamDir[1] +=  yDelta/1000.0;
+            gCamDir[2] -= hVector[2]* xDelta/1000.0;
+            vec3_norm(gCamDir,gCamDir);
+        }
+
+        gCamPos[0] += gMvDir[0]*lDeltaTime*gCamSpeed;
+        gCamPos[1] += gMvDir[1]*lDeltaTime*gCamSpeed;
+        gCamPos[2] += gMvDir[2]*lDeltaTime*gCamSpeed;
+
+        printf("%f,%f,%f-%f,%f,%f\n",gCamDir[0],gCamDir[1],gCamDir[2],gCamPos[0],gCamPos[1],gCamPos[2]);
+
+
         glClearColor(0.7f, 0.8f, 0.7f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         {
- 
+            vec3 eye = {gCamPos[0], gCamPos[1], gCamPos[2]};
+            vec3 center = {gCamDir[0]+gCamPos[0], gCamDir[1]+gCamPos[1], gCamDir[2]+gCamPos[2]};
+            vec3 up = {0, 1.0, 0.0};
+
             mat4x4 m, p, mvp;
             mat4x4_identity(m);
-            mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
+            // mat4x4_translate_in_place(m, gCamPos[0],gCamPos[1],gCamPos[2] );
+            // mat4x4_look_at(m,eye,center,up);
+            mat4x4_ortho(p, -gScreenRatio, gScreenRatio, -1.f, 1.f, 1.f, -1.f);
+            // mat4x4_perspective(p,0.785398,gScreenRatio,0.0f,10000.f);
             mat4x4_mul(mvp, p, m);
             glUniformMatrix4fv(MVP, 1, GL_FALSE, (const GLfloat*) mvp);
+
         }
 
         glUseProgram(program);
