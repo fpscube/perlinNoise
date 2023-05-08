@@ -39,16 +39,16 @@ void randomGradient(int ix, int iy,float *pXout,float *pYout) {
     *pXout = cos(random); *pYout = sin(random);
 }
 
-void perlinGenGradiant(int pX,int pY,int pSize,int pGridSize)
+void perlinGenGradiant(int pX,int pY,int pSizeWC,int pGridSizeWC)
  {
-    int gridTabSize = pSize/pGridSize;
+    int gridTabSize = pSizeWC/pGridSizeWC;
     for (int y=0;y<(gridTabSize+1);y++)
     {
         for (int x=0;x<(gridTabSize+1);x++)
         {
             float lRandY;
             float lRandX;
-            randomGradient(pX + x*pGridSize,pY + y*pGridSize,&lRandX,&lRandY); 
+            randomGradient(pX + x*pGridSizeWC,pY + y*pGridSizeWC,&lRandX,&lRandY); 
             stc_gradient[x][y][0]= lRandX;
             stc_gradient[x][y][1]= lRandY;
         }
@@ -63,7 +63,7 @@ void perlinGenGradiant(int pX,int pY,int pSize,int pGridSize)
     return t * t * t * (t * (t * 6 - 15) + 10);         // 6t^5 - 15t^4 + 10t^3
 }
  
- // Compute Perlin noise at coordinates x, y
+ // Compute Perlin noise at coordinates x, y (wc world coordinate)
  float perlinGetPixel(float x, float y) {
  
      // Determine grid cell coordinates
@@ -93,22 +93,22 @@ void perlinGenGradiant(int pX,int pY,int pSize,int pGridSize)
      return value;
  }
 
-void perlinGenTexture(uint32_t * pBuffer,int pPosX,int pPosY,int pSize,int pTextureSize,int pGridSize)
+void perlinGenTexture(uint32_t * pBuffer,int PosX_WC,int pPosY_WC,int pSizeWC,int pTextureSize,int pGridSizeWC)
 {
-    if((pSize/pGridSize) > K_GRID_SIZE) 
+    if((pSizeWC/pGridSizeWC) > K_GRID_SIZE) 
     {
         printf("error perlin grid must be < %d",K_GRID_SIZE);
         exit(1);
     }
-    perlinGenGradiant(pPosX,pPosY,pSize,pGridSize);
-    float lPixelSize = (float)pSize/(float)pTextureSize;
+    perlinGenGradiant(PosX_WC,pPosY_WC,pSizeWC,pGridSizeWC);
+    float lPixelSize = (float)pSizeWC/(float)pTextureSize;
 
     for (int x=0;x<pTextureSize;x++)
     {
         for (int y=0;y<pTextureSize;y++)
         {
-            float xGrid = ((float)x)*lPixelSize/((float)pGridSize);
-            float yGrid = ((float)y)*lPixelSize/((float)pGridSize);
+            float xGrid = ((float)x)*lPixelSize/((float)pGridSizeWC);
+            float yGrid = ((float)y)*lPixelSize/((float)pGridSizeWC);
             float pixelval = perlinGetPixel(xGrid,yGrid);
             pixelval = (pixelval +1.0) /2.0;
             int pixelIntVal = (pixelval*255);
@@ -122,26 +122,49 @@ void perlinGenTexture(uint32_t * pBuffer,int pPosX,int pPosY,int pSize,int pText
     }
 }
 
+/**
+ * @brief Generate a height map texture using perlin noise algorithm
+ *  at x y position, this call the same position will always generate the same texture
+ * 
+ * @param pBuffer output texture buffer
+ * @param PosX_WC position X of the texture in world Coord 
+ * @param pPosY_WC position Y of the texture in world Coord 
+ * @param pSizeWC size of the texture in world Coord
+ * @param pTextureSize texture size in pixel
+ * @param pGridSizeWC grid size in world coord
+ */
 
-void perlinGenHeightMap(float * pBuffer,int pPosX,int pPosY,int pSize,int pTextureSize,int pGridSize)
+void perlinGenHeightMap(float * pBuffer,int PosX_WC,int pPosY_WC,int pSizeWC,int pTextureSizePX,int pGridSizeWC)
 {   
     
-    if((pSize/pGridSize) > K_GRID_SIZE) 
+    if((pSizeWC/pGridSizeWC) > K_GRID_SIZE) 
     {
         printf("error perlin grid must be < %d\n",K_GRID_SIZE);
         exit(1);
     }
 
-    perlinGenGradiant(pPosX,pPosY,pSize,pGridSize);
-    float lPixelSize = (float)pSize/(float)pTextureSize;
-
-    for (int x=0;x<pTextureSize;x++)
+    if(pSizeWC<pGridSizeWC)
     {
-        for (int y=0;y<pTextureSize;y++)
+        printf("error perlin grid size %d  must lower than size %d\n",pGridSizeWC,pSizeWC);
+        exit(1);
+    }
+
+    if((pSizeWC%pGridSizeWC)!=0) 
+    {
+        printf("error perlin grid size  must multiple of size %d\n",pGridSizeWC,pSizeWC);
+        exit(1);
+    }
+
+    perlinGenGradiant(PosX_WC,pPosY_WC,pSizeWC,pGridSizeWC);
+    float lWcPxRatio= (float)pSizeWC/(float)pTextureSizePX;
+
+    for (int x=0;x<pTextureSizePX;x++)
+    {
+        for (int y=0;y<pTextureSizePX;y++)
         {
-            float xGrid = ((float)x)*lPixelSize/((float)pGridSize);
-            float yGrid = ((float)y)*lPixelSize/((float)pGridSize);
-            pBuffer[x+y*pTextureSize] =  perlinGetPixel(xGrid,yGrid);
+            float xGrid = ((float)x)*lWcPxRatio/((float)pGridSizeWC);
+            float yGrid = ((float)y)*lWcPxRatio/((float)pGridSizeWC);
+            pBuffer[x+y*pTextureSizePX] =  perlinGetPixel(xGrid,yGrid);
         }
 
     }
