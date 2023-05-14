@@ -31,5 +31,6 @@ typedef struct
 /* update update regarding position */
 T_map * map_update(int pTileBaseSize,int pPosX,int pPosY);
 
+void map_printDebug(T_map_texture *map_texture);
 
 #endif

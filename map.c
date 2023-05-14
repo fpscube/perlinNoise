@@ -112,3 +112,15 @@ T_map *map_update(int pTileBaseSize,int pPosX,int pPosY)
     }
     return &stc_map;
 }
+
+void map_printDebug(T_map_texture *map_texture) {
+    printf("posX = %d\n", map_texture->posX);
+    printf("posY = %d\n", map_texture->posY);
+    printf("size = %d\n", map_texture->size);
+    printf("gridPosX = %d\n", map_texture->gridPosX);
+    printf("gridPosY = %d\n", map_texture->gridPosY);
+    printf("tileId = %d\n", map_texture->tileId);
+    printf("computeId = %d\n", map_texture->computeId);
+    printf("isUpToDate = %d\n", map_texture->isUpToDate);
+    printf("isInitialised = %d\n", map_texture->isInitialised);
+}

@@ -9,7 +9,7 @@
  
 #include <stdlib.h>
 #include <stdio.h>
-#define K_TILE_RES 64
+#define K_TILE_RES_PX 100
 #define K_TILE_SIZE 1000
 typedef struct
 {
@@ -17,8 +17,8 @@ typedef struct
     float r, g, b;
 }T_vertexbuffer;
 
-static T_vertexbuffer vertexBuffer[K_TILE_RES*K_TILE_RES*6];
-static int indexBuffer[K_TILE_RES*K_TILE_RES*6];
+static T_vertexbuffer vertexBuffer[K_TILE_RES_PX*K_TILE_RES_PX*6];
+static int indexBuffer[K_TILE_RES_PX*K_TILE_RES_PX*6];
 GLint mvp_location, vpos_location, vcol_location;
  
 static const char* vertex_shader_text =
@@ -164,20 +164,21 @@ GLuint elementbuffer;
 
 void drawMapTile(T_map_texture *pMapTexture)
 {
-    static float perlinHeightMap[K_TILE_RES*K_TILE_RES];
+    static float perlinHeightMap[K_TILE_RES_PX*K_TILE_RES_PX];
    // if(!lTexture->isUpToDate)
     {
-        perlinGenHeightMap((float *)perlinHeightMap,pMapTexture->posX,pMapTexture->posY,pMapTexture->size,K_TILE_RES,1000);
-    }
+        perlinGenHeightMap((float *)perlinHeightMap,pMapTexture->posX,pMapTexture->posY,pMapTexture->size,K_TILE_RES_PX,1000);
        
+    }
     int vcount=0;
     int icount=0;
-    float lsb =  pMapTexture->size/K_TILE_RES;
-    for (int x=0;x<(K_TILE_RES);x++)
+    float lsb =  ((float)pMapTexture->size)/((float)(K_TILE_RES_PX-1));
+
+    for (int z=0;z<(K_TILE_RES_PX);z++)
     {
-        for (int z=0;z<K_TILE_RES;z++)
+        for (int x=0;x<K_TILE_RES_PX;x++)
         {
-            float y = ((float *)(perlinHeightMap))[z+x*K_TILE_RES];
+            float y = ((float *)(perlinHeightMap))[x+z*K_TILE_RES_PX];
             if(y<0)
             {
                 vertexBuffer[vcount].r=(y + 1.0)/2.0;
@@ -196,17 +197,17 @@ void drawMapTile(T_map_texture *pMapTexture)
             vertexBuffer[vcount].z=z*lsb + pMapTexture->posY;
             vcount++;
 
-            if (((x+1)<K_TILE_RES) && ((z+1)<K_TILE_RES))
+            if (((x+1)<K_TILE_RES_PX) && ((z+1)<K_TILE_RES_PX))
             {
                 //triangle 1
-                indexBuffer[icount++] = z+x*(K_TILE_RES);
-                indexBuffer[icount++] = z+1+x*(K_TILE_RES);
-                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES);
+                indexBuffer[icount++] = z+x*(K_TILE_RES_PX);
+                indexBuffer[icount++] = z+1+x*(K_TILE_RES_PX);
+                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES_PX);
 
                 //triangle 2
-                indexBuffer[icount++] = z+1+x*(K_TILE_RES);
-                indexBuffer[icount++] = z+1+(x+1)*(K_TILE_RES);
-                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES);
+                indexBuffer[icount++] = z+1+x*(K_TILE_RES_PX);
+                indexBuffer[icount++] = z+1+(x+1)*(K_TILE_RES_PX);
+                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES_PX);
             
             }
         }
@@ -356,13 +357,12 @@ int main(void)
                 drawMapTile(&lMap->ring[iRing].tex[texId]);
             }
         }
-        // drawMapTile(&lMap->ring[0].tex[0]);
-        // drawMapTile(&lMap->ring[0].tex[1]);
+
+
 
         glfwSwapBuffers(window);
-        static counter=0;
         glfwPollEvents();
-        printf(" - PollEvents %d\n",(counter++)%50);
+        // printf(" - PollEvents %d\n",(counter++)%50);
 
     }
     
