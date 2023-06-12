@@ -162,17 +162,35 @@ void map_computeTex(T_map_texture * pTexture)
 GLuint vertex_buffer;
 GLuint elementbuffer;
 
-void drawMapTile(T_map_texture *pMapTexture)
+
+/**
+ * @brief generate and draw map tile
+ * 
+ * @param pCenterX_WC center X of the tile in world coord
+ * @param pCenterY_WC center Y of the tile in world coord
+ * @param pSizeWC  size of the tile in world coord
+ * @param pGridSizeWC grid size in world coord
+ */
+void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC)
 {
     static float perlinHeightMap[K_TILE_RES_PX*K_TILE_RES_PX];
-   // if(!lTexture->isUpToDate)
-    {
-        perlinGenHeightMap((float *)perlinHeightMap,pMapTexture->posX,pMapTexture->posY,pMapTexture->size,K_TILE_RES_PX,1000);
+   
+
+    // get left bottom corner coord in order to generate texture at center
+    int pOriginX = pCenterX_WC - pSizeWC/2;
+    int pOriginY = pCenterY_WC - pSizeWC/2;
+
+
+    perlinGenHeightMap((float *)perlinHeightMap,pOriginX,pOriginY,pSizeWC,K_TILE_RES_PX,pGridSizeWC);
        
-    }
+    
     int vcount=0;
     int icount=0;
-    float lsb =  ((float)pMapTexture->size)/((float)(K_TILE_RES_PX-1));
+    float lsb =  ((float)pSizeWC)/((float)(K_TILE_RES_PX-1));
+
+    // debug color
+    float colorR = ((float)(pOriginX%124))/255.0;
+    float colorG = ((float)(pOriginY%168))/255.0;
 
     for (int z=0;z<(K_TILE_RES_PX);z++)
     {
@@ -181,20 +199,20 @@ void drawMapTile(T_map_texture *pMapTexture)
             float y = ((float *)(perlinHeightMap))[x+z*K_TILE_RES_PX];
             if(y<0)
             {
-                vertexBuffer[vcount].r=(y + 1.0)/2.0;
-                vertexBuffer[vcount].g=(y + 1.0)/2.0;
+                vertexBuffer[vcount].r=(y + 1.0)/2.0 + colorR;
+                vertexBuffer[vcount].g=(y + 1.0)/2.0 + colorG;
                 vertexBuffer[vcount].b=(y + 1.0)/2.0 + 0.5;
             }
             else
             {
-                vertexBuffer[vcount].r=(y + 1.0)/2.0;
-                vertexBuffer[vcount].g=(y + 1.0)/2.0 + 0.2;
+                vertexBuffer[vcount].r=(y + 1.0)/2.0 + colorR;
+                vertexBuffer[vcount].g=(y + 1.0)/2.0 + 0.2 + colorG;
                 vertexBuffer[vcount].b=(y + 1.0)/2.0 ;
             }
 
-            vertexBuffer[vcount].x=x*lsb + pMapTexture->posX;
+            vertexBuffer[vcount].x=x*lsb + pOriginX;
             vertexBuffer[vcount].y=y*1000;
-            vertexBuffer[vcount].z=z*lsb + pMapTexture->posY;
+            vertexBuffer[vcount].z=z*lsb + pOriginY;
             vcount++;
 
             if (((x+1)<K_TILE_RES_PX) && ((z+1)<K_TILE_RES_PX))
@@ -227,6 +245,27 @@ void drawMapTile(T_map_texture *pMapTexture)
           
     glDrawElements(gRenderType, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
 }
+
+void drawMapTilesRing(int pRingId,int pPosX_WC,int pPosY_WC,int pSizeWC,int pGridSizeWC)
+{
+
+    int lRingSize_WC;
+    lRingSize_WC= pow(3,pRingId)*pSizeWC;
+
+    const int cstXOffset[]= {0.0, 1.0, 1.0, 1.0, 0.0,-1.0,-1.0,-1.0};
+    const int cstYOffset[]= {1.0, 1.0, 0.0,-1.0,-1.0,-1.0, 0.0, 1.0};
+
+        printf("startRing\n");
+    for(int i=0;i<8;i++)
+    {
+        int xOffset = cstXOffset[i]*lRingSize_WC + pPosX_WC;
+        int yOffset = cstYOffset[i]*lRingSize_WC + pPosY_WC;
+        drawMapTile(xOffset,yOffset,lRingSize_WC,pGridSizeWC) ;
+    }
+
+
+}
+
 
 int main(void)
 {
@@ -348,15 +387,49 @@ int main(void)
         glUseProgram(program);
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
 
-        
-        T_map * lMap = map_update(K_TILE_SIZE*10,gCamPos[0],gCamPos[2]);
-        for(int iRing=0;iRing<1;iRing++)
-        {
-            for(int texId=0;texId<K_MAP_NB_TEXTURE_BY_RING;texId++)
-            {
-                drawMapTile(&lMap->ring[iRing].tex[texId]);
-            }
-        }
+
+        // TODO First step draw a full static map with 1 square and 3 ring
+        // we will manage the movement later
+
+        // draw center at 0,0
+        // Todo is 0,0 the centrer ?
+        drawMapTile(0,0,10000,1000);
+        drawMapTilesRing(0,0,0,10000,1000);   
+        drawMapTilesRing(1,0,0,10000,1000);   
+        drawMapTilesRing(2,0,0,10000,1000);  
+        // TODO draw ring 2 at 0,0
+
+        // TODO draw ring 3 at 0,0
+        // draw central tile  (ring 0)
+        // draw ring  1
+        // draw ring  2
+        // draw ring  3
+
+        // implementation 
+        // for(int iRing=0;iRing<K_MAP_NB_RING;iRing++)
+        // {        
+            
+        //     for(int texId=0;texId<K_MAP_NB_TEXTURE_BY_RING;texId++)
+        //     {
+        //     //drawMapTile(&lMap->ring[iRing].tex[texId]);
+        // }
+
+
+        //void perlinGenHeightMap(float * pBuffer,int PosX_WC,int pPosY_WC,int pSizeWC,int pTextureSizePX,int pGridSizeWC)
+
+
+        // T_map * lMap = map_update(K_TILE_SIZE*10,gCamPos[0],gCamPos[2]);
+
+
+
+        // // Todo afficher de la couleur sur les texture en fonction du ring
+        // for(int iRing=0;iRing<K_MAP_NB_RING;iRing++)
+        // {
+        //     for(int texId=0;texId<K_MAP_NB_TEXTURE_BY_RING;texId++)
+        //     {
+        //         drawMapTile(&lMap->ring[iRing].tex[texId]);
+        //     }
+        // }
 
 
 
