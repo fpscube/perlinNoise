@@ -45,8 +45,8 @@ static void error_callback(int error, const char* description)
 {
     fprintf(stderr, "Error: %s\n", description);
 }
-vec3 gCamPos = {486.554504,4519.624023,15592.208984};
-vec3 gCamDir = {0.336166,-0.354075,-0.872710};
+vec3 gCamPos = {0.0,40519.624023,0.0};
+vec3 gCamDir = {-0.336166,-0.354075,0.872710};
 vec4 gMvDir = {0.0,0.0,0.0,0.0};
 float gCamSpeed=1000.0;
  
@@ -170,8 +170,13 @@ GLuint elementbuffer;
  * @param pCenterY_WC center Y of the tile in world coord
  * @param pSizeWC  size of the tile in world coord
  * @param pGridSizeWC grid size in world coord
+ * @param pTileId position of the tile in the ring in order to manage resolution limit
+ * tile 0/2/4/6 draw limit with inner tile
+ *    7 0 1 
+ *    6 x 2
+ *    5 4 3 
  */
-void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC)
+void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int pTileId)
 {
     static float perlinHeightMap[K_TILE_RES_PX*K_TILE_RES_PX];
    
@@ -192,7 +197,7 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC)
     float colorR = ((float)(pOriginX%124))/255.0;
     float colorG = ((float)(pOriginY%168))/255.0;
 
-    for (int z=0;z<(K_TILE_RES_PX);z++)
+    for (int z=0;z<K_TILE_RES_PX;z++)
     {
         for (int x=0;x<K_TILE_RES_PX;x++)
         {
@@ -217,6 +222,9 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC)
 
             if (((x+1)<K_TILE_RES_PX) && ((z+1)<K_TILE_RES_PX))
             {
+                //todo avoid limit
+               // if(pTileId==0 && x==0) continue;
+
                 //triangle 1
                 indexBuffer[icount++] = z+x*(K_TILE_RES_PX);
                 indexBuffer[icount++] = z+1+x*(K_TILE_RES_PX);
@@ -255,12 +263,19 @@ void drawMapTilesRing(int pRingId,int pPosX_WC,int pPosY_WC,int pSizeWC,int pGri
     const int cstXOffset[]= {0.0, 1.0, 1.0, 1.0, 0.0,-1.0,-1.0,-1.0};
     const int cstYOffset[]= {1.0, 1.0, 0.0,-1.0,-1.0,-1.0, 0.0, 1.0};
 
-        printf("startRing\n");
+    // 7 0 1
+    // 6 x 2
+    // 5 4 3
+
+    // TODO
+    // draw junction for 0 2 4 6 inner limit
+    // for each point at inner limit 
+
     for(int i=0;i<8;i++)
     {
         int xOffset = cstXOffset[i]*lRingSize_WC + pPosX_WC;
         int yOffset = cstYOffset[i]*lRingSize_WC + pPosY_WC;
-        drawMapTile(xOffset,yOffset,lRingSize_WC,pGridSizeWC) ;
+        drawMapTile(xOffset,yOffset,lRingSize_WC,pGridSizeWC,i) ;
     }
 
 
@@ -388,22 +403,14 @@ int main(void)
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
 
 
-        // TODO First step draw a full static map with 1 square and 3 ring
-        // we will manage the movement later
 
         // draw center at 0,0
-        // Todo is 0,0 the centrer ?
-        drawMapTile(0,0,10000,1000);
+        drawMapTile(0,0,10000,1000,-1);
         drawMapTilesRing(0,0,0,10000,1000);   
         drawMapTilesRing(1,0,0,10000,1000);   
         drawMapTilesRing(2,0,0,10000,1000);  
-        // TODO draw ring 2 at 0,0
 
-        // TODO draw ring 3 at 0,0
-        // draw central tile  (ring 0)
-        // draw ring  1
-        // draw ring  2
-        // draw ring  3
+        //todo for ring 
 
         // implementation 
         // for(int iRing=0;iRing<K_MAP_NB_RING;iRing++)

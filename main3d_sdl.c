@@ -372,15 +372,13 @@ int main(void)
 
         
         T_map * lMap = map_update(K_TILE_SIZE*10,gCamPos[0],gCamPos[2]);
-        for(int iRing=0;iRing<1;iRing++)
+        for(int iRing=0;iRing<0;iRing++)
         {
-            for(int texId=0;texId<1;texId++)
+            for(int texId=0;texId<9;texId++)
             {
                 drawMapTile(&lMap->ring[iRing].tex[texId]);
             }
         }
-        // drawMapTile(&lMap->ring[0].tex[0]);
-        // drawMapTile(&lMap->ring[0].tex[1]);
 
         SDL_GL_SwapWindow(window);
     }

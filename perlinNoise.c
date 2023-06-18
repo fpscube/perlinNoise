@@ -147,8 +147,8 @@ void perlinGenTexture(uint32_t * pBuffer,int PosX_WC,int pPosY_WC,int pSizeWC,in
  *  at x y position, this call the same position will always generate the same texture
  * 
  * @param pBuffer output texture buffer
- * @param PosX_WC position X of the texture in world Coord 
- * @param pPosY_WC position Y of the texture in world Coord 
+ * @param PosX_WC position X of the texture in world Coord (bottom left)
+ * @param pPosY_WC position Y of the texture in world Coord (bottom left)
  * @param pSizeWC size of the texture in world Coord
  * @param pTextureSize texture size in pixel
  * @param pGridSizeWC grid size in world coord
