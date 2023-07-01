@@ -175,6 +175,7 @@ void perlinGenHeightMap(float * pBuffer,int PosX_WC,int pPosY_WC,int pSizeWC,int
         exit(1);
     }
 
+    /* gen all gradiant vector for a PosX_WC/PosY_WC => SizeWC square */
     perlinGenGradiant(PosX_WC,pPosY_WC,pSizeWC,pGridSizeWC);
 
     int lGridCoef = pSizeWC/pGridSizeWC;

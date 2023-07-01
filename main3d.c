@@ -163,6 +163,11 @@ GLuint vertex_buffer;
 GLuint elementbuffer;
 
 
+typedef struct
+{
+    float  tex[K_TILE_RES_PX*K_TILE_RES_PX];
+}T_MapTileTex;
+
 /**
  * @brief generate and draw map tile
  * 
@@ -170,24 +175,20 @@ GLuint elementbuffer;
  * @param pCenterY_WC center Y of the tile in world coord
  * @param pSizeWC  size of the tile in world coord
  * @param pGridSizeWC grid size in world coord
+ * @param pRingId ring id (-1 is internal tile)
  * @param pTileId position of the tile in the ring in order to manage resolution limit
  * tile 0/2/4/6 draw limit with inner tile
  *    7 0 1 
  *    6 x 2
  *    5 4 3 
+ * @param pTextureTab List of texture (0=internal 8-15=ring1 16-23=ring2 24-31=ring3 ...)
  */
-void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int pTileId)
+void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int pRingId,int pTileId,T_MapTileTex *pTextureTab)
 {
-    static float perlinHeightMap[K_TILE_RES_PX*K_TILE_RES_PX];
    
-
     // get left bottom corner coord in order to generate texture at center
     int pOriginX = pCenterX_WC - pSizeWC/2;
-    int pOriginY = pCenterY_WC - pSizeWC/2;
-
-
-    perlinGenHeightMap((float *)perlinHeightMap,pOriginX,pOriginY,pSizeWC,K_TILE_RES_PX,pGridSizeWC);
-       
+    int pOriginY = pCenterY_WC - pSizeWC/2;       
     
     int vcount=0;
     int icount=0;
@@ -197,11 +198,14 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
     float colorR = ((float)(pOriginX%124))/255.0;
     float colorG = ((float)(pOriginY%168))/255.0;
 
+    // get current Texture
+    float *lTexture = pTextureTab[pRingId*8+pTileId].tex;
+
     for (int z=0;z<K_TILE_RES_PX;z++)
     {
         for (int x=0;x<K_TILE_RES_PX;x++)
         {
-            float y = ((float *)(perlinHeightMap))[x+z*K_TILE_RES_PX];
+            float y = lTexture[x+z*K_TILE_RES_PX];
             if(y<0)
             {
                 vertexBuffer[vcount].r=(y + 1.0)/2.0 + colorR;
@@ -222,8 +226,18 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
 
             if (((x+1)<K_TILE_RES_PX) && ((z+1)<K_TILE_RES_PX))
             {
-                //todo avoid limit
-               // if(pTileId==0 && x==0) continue;
+
+                /* tile 0/2/4/6 draw limit with inner tile
+                *    7 0 1 
+                *    6 x 2
+                *    5 4 3 
+                */
+                //Limit
+               if(pTileId==0 && x==0) continue;
+               if(pTileId==2 && z==0) continue;
+               if(pTileId==4 && x==(K_TILE_RES_PX-2)) continue;
+               if(pTileId==6 && z==(K_TILE_RES_PX-2)) continue;
+
 
                 //triangle 1
                 indexBuffer[icount++] = z+x*(K_TILE_RES_PX);
@@ -254,11 +268,10 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
     glDrawElements(gRenderType, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
 }
 
-void drawMapTilesRing(int pRingId,int pPosX_WC,int pPosY_WC,int pSizeWC,int pGridSizeWC)
+void drawMapTilesRing(int pPosX_WC,int pPosY_WC,int pSizeWC,int pGridSizeWC)
 {
 
-    int lRingSize_WC;
-    lRingSize_WC= pow(3,pRingId)*pSizeWC;
+    static T_MapTileTex perlinHeightMapTab[4*8];
 
     const int cstXOffset[]= {0.0, 1.0, 1.0, 1.0, 0.0,-1.0,-1.0,-1.0};
     const int cstYOffset[]= {1.0, 1.0, 0.0,-1.0,-1.0,-1.0, 0.0, 1.0};
@@ -267,15 +280,33 @@ void drawMapTilesRing(int pRingId,int pPosX_WC,int pPosY_WC,int pSizeWC,int pGri
     // 6 x 2
     // 5 4 3
 
-    // TODO
-    // draw junction for 0 2 4 6 inner limit
-    // for each point at inner limit 
-
-    for(int i=0;i<8;i++)
+    perlinGenHeightMap(perlinHeightMapTab[0].tex,pPosX_WC,pPosY_WC,pSizeWC,K_TILE_RES_PX,pGridSizeWC);
+    for(int ringId=0;ringId<3;ringId++)
     {
-        int xOffset = cstXOffset[i]*lRingSize_WC + pPosX_WC;
-        int yOffset = cstYOffset[i]*lRingSize_WC + pPosY_WC;
-        drawMapTile(xOffset,yOffset,lRingSize_WC,pGridSizeWC,i) ;
+        int lRingSize_WC;
+        lRingSize_WC= pow(3,ringId)*pSizeWC;
+        for(int i=0;i<8;i++)
+        {
+            int xOffset = cstXOffset[i]*lRingSize_WC + pPosX_WC;
+            int yOffset = cstYOffset[i]*lRingSize_WC + pPosY_WC;
+            perlinGenHeightMap(perlinHeightMapTab[ringId*8 + i].tex,xOffset,yOffset,lRingSize_WC,K_TILE_RES_PX,pGridSizeWC);
+        }
+    }
+
+
+    drawMapTile(pPosX_WC,pPosY_WC,pSizeWC,pGridSizeWC,0,0,&perlinHeightMapTab[0]);
+
+
+    for(int ringId=0;ringId<3;ringId++)
+    {
+        int lRingSize_WC;
+        lRingSize_WC= pow(3,ringId)*pSizeWC;
+        for(int i=0;i<8;i++)
+        {
+            int xOffset = cstXOffset[i]*lRingSize_WC + pPosX_WC;
+            int yOffset = cstYOffset[i]*lRingSize_WC + pPosY_WC;
+            drawMapTile(xOffset,yOffset,lRingSize_WC,pGridSizeWC,ringId,i,&perlinHeightMapTab[0]) ;
+        }
     }
 
 
@@ -405,10 +436,7 @@ int main(void)
 
 
         // draw center at 0,0
-        drawMapTile(0,0,10000,1000,-1);
-        drawMapTilesRing(0,0,0,10000,1000);   
-        drawMapTilesRing(1,0,0,10000,1000);   
-        drawMapTilesRing(2,0,0,10000,1000);  
+        drawMapTilesRing(0,0,10000,1000); 
 
         //todo for ring 
 
