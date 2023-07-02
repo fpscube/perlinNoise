@@ -194,7 +194,7 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
     int icount=0;
     float lsb =  ((float)pSizeWC)/((float)(K_TILE_RES_PX-1));
 
-    // debug color
+    // debug color to comment
     float colorR = ((float)(pOriginX%124))/255.0;
     float colorG = ((float)(pOriginY%168))/255.0;
 
@@ -204,7 +204,21 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
     for (int z=0;z<K_TILE_RES_PX;z++)
     {
         for (int x=0;x<K_TILE_RES_PX;x++)
-        {
+        {                
+            /* tile 0/2/4/6 draw limit with inner tile
+                *    7 0 1 
+                *    6 x 2
+                *    5 4 3 
+                */
+            int highReslimit= ((pTileId==0 && x==0) ||
+                        (pTileId==2 && z==0) ||
+                        (pTileId==4 && x==(K_TILE_RES_PX-2)) ||
+                        (pTileId==6 && z==(K_TILE_RES_PX-2)));
+
+            
+
+            
+            // compute vertex color using perlin texture
             float y = lTexture[x+z*K_TILE_RES_PX];
             if(y<0)
             {
@@ -219,25 +233,18 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
                 vertexBuffer[vcount].b=(y + 1.0)/2.0 ;
             }
 
+            //Add Vertex
             vertexBuffer[vcount].x=x*lsb + pOriginX;
             vertexBuffer[vcount].y=y*1000;
             vertexBuffer[vcount].z=z*lsb + pOriginY;
             vcount++;
 
+
+            //Add Triangles
             if (((x+1)<K_TILE_RES_PX) && ((z+1)<K_TILE_RES_PX))
             {
-
-                /* tile 0/2/4/6 draw limit with inner tile
-                *    7 0 1 
-                *    6 x 2
-                *    5 4 3 
-                */
-                //Limit
-               if(pTileId==0 && x==0) continue;
-               if(pTileId==2 && z==0) continue;
-               if(pTileId==4 && x==(K_TILE_RES_PX-2)) continue;
-               if(pTileId==6 && z==(K_TILE_RES_PX-2)) continue;
-
+                //Avoid Limit
+               if(highReslimit) continue;
 
                 //triangle 1
                 indexBuffer[icount++] = z+x*(K_TILE_RES_PX);
@@ -248,10 +255,13 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
                 indexBuffer[icount++] = z+1+x*(K_TILE_RES_PX);
                 indexBuffer[icount++] = z+1+(x+1)*(K_TILE_RES_PX);
                 indexBuffer[icount++] = z+(x+1)*(K_TILE_RES_PX);
+               
             
             }
         }
     }
+
+  
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertexBuffer), vertexBuffer, GL_STATIC_DRAW);
  
@@ -261,7 +271,6 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
                           
     glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
                           sizeof(vertexBuffer[0]), (void*) (sizeof(float) * 3));
-
 
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, icount* sizeof(unsigned int), &indexBuffer[0], GL_STATIC_DRAW);
           
