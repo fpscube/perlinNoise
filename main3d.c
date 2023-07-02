@@ -213,13 +213,17 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
             int highReslimit= ((pTileId==0 && x==0) ||
                         (pTileId==2 && z==0) ||
                         (pTileId==4 && x==(K_TILE_RES_PX-2)) ||
-                        (pTileId==6 && z==(K_TILE_RES_PX-2)));
-
-            
-
+                        (pTileId==6 && z==(K_TILE_RES_PX-2))) && pRingId>1;
             
             // compute vertex color using perlin texture
             float y = lTexture[x+z*K_TILE_RES_PX];
+            if(highReslimit )
+            {
+                //todo chose the good texture
+                y = lTexture[x+z*K_TILE_RES_PX];
+            }
+
+
             if(y<0)
             {
                 vertexBuffer[vcount].r=(y + 1.0)/2.0 + colorR;
@@ -290,10 +294,10 @@ void drawMapTilesRing(int pPosX_WC,int pPosY_WC,int pSizeWC,int pGridSizeWC)
     // 5 4 3
 
     perlinGenHeightMap(perlinHeightMapTab[0].tex,pPosX_WC,pPosY_WC,pSizeWC,K_TILE_RES_PX,pGridSizeWC);
-    for(int ringId=0;ringId<3;ringId++)
+    for(int ringId=1;ringId<4;ringId++)
     {
         int lRingSize_WC;
-        lRingSize_WC= pow(3,ringId)*pSizeWC;
+        lRingSize_WC= pow(3,ringId-1)*pSizeWC;
         for(int i=0;i<8;i++)
         {
             int xOffset = cstXOffset[i]*lRingSize_WC + pPosX_WC;
@@ -306,10 +310,10 @@ void drawMapTilesRing(int pPosX_WC,int pPosY_WC,int pSizeWC,int pGridSizeWC)
     drawMapTile(pPosX_WC,pPosY_WC,pSizeWC,pGridSizeWC,0,0,&perlinHeightMapTab[0]);
 
 
-    for(int ringId=0;ringId<3;ringId++)
+    for(int ringId=1;ringId<4;ringId++)
     {
         int lRingSize_WC;
-        lRingSize_WC= pow(3,ringId)*pSizeWC;
+        lRingSize_WC= pow(3,ringId-1)*pSizeWC;
         for(int i=0;i<8;i++)
         {
             int xOffset = cstXOffset[i]*lRingSize_WC + pPosX_WC;
