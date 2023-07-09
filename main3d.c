@@ -46,7 +46,7 @@ static void error_callback(int error, const char* description)
     fprintf(stderr, "Error: %s\n", description);
 }
 vec3 gCamPos = {0.0,40519.624023,0.0};
-vec3 gCamDir = {-0.336166,-0.354075,0.872710};
+vec3 gCamDir = {-0.002699 , -0.842619, 0.538504};
 vec4 gMvDir = {0.0,0.0,0.0,0.0};
 float gCamSpeed=1000.0;
  
@@ -175,7 +175,7 @@ typedef struct
  * @param pCenterY_WC center Y of the tile in world coord
  * @param pSizeWC  size of the tile in world coord
  * @param pGridSizeWC grid size in world coord
- * @param pRingId ring id (-1 is internal tile)
+ * @param pRingId ring id 
  * @param pTileId position of the tile in the ring in order to manage resolution limit
  * tile 0/2/4/6 draw limit with inner tile
  *    7 0 1 
@@ -200,6 +200,7 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
 
     // get current Texture
     float *lTexture = pTextureTab[pRingId*8+pTileId].tex;
+    float *lTextureHRLimit[3]={0,0,0};
 
     for (int z=0;z<K_TILE_RES_PX;z++)
     {
@@ -210,19 +211,14 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
                 *    6 x 2
                 *    5 4 3 
                 */
-            int highReslimit= ((pTileId==0 && x==0) ||
-                        (pTileId==2 && z==0) ||
-                        (pTileId==4 && x==(K_TILE_RES_PX-2)) ||
-                        (pTileId==6 && z==(K_TILE_RES_PX-2))) && pRingId>1;
+            int highReslimit= ((pTileId==0 && z==0 && pRingId>1)); //||
+                     //   (pTileId==2 && z==0) ||
+                     //   (pTileId==4 && x==(K_TILE_RES_PX-2)) ||
+                     //   (pTileId==6 && z==(K_TILE_RES_PX-2))) && pRingId>1;
             
             // compute vertex color using perlin texture
             float y = lTexture[x+z*K_TILE_RES_PX];
-            if(highReslimit )
-            {
-                //todo chose the good texture
-                y = lTexture[x+z*K_TILE_RES_PX];
-            }
-
+           
 
             if(y<0)
             {
@@ -244,28 +240,35 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
             vcount++;
 
 
-            //Add Triangles
+            // //Add Triangles
             if (((x+1)<K_TILE_RES_PX) && ((z+1)<K_TILE_RES_PX))
             {
                 //Avoid Limit
                if(highReslimit) continue;
 
-                //triangle 1
-                indexBuffer[icount++] = z+x*(K_TILE_RES_PX);
-                indexBuffer[icount++] = z+1+x*(K_TILE_RES_PX);
-                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES_PX);
+                //triangle 1 
+                // x--x
+                // | /
+                // |/
+                // x
+                indexBuffer[icount++] = vcount-1; 
+                indexBuffer[icount++] = vcount;
+                indexBuffer[icount++] = vcount-1 + K_TILE_RES_PX;
 
                 //triangle 2
-                indexBuffer[icount++] = z+1+x*(K_TILE_RES_PX);
-                indexBuffer[icount++] = z+1+(x+1)*(K_TILE_RES_PX);
-                indexBuffer[icount++] = z+(x+1)*(K_TILE_RES_PX);
+                //    x
+                //   /| 
+                //  / |
+                // x--x
+                indexBuffer[icount++] = vcount;
+                indexBuffer[icount++] = vcount + K_TILE_RES_PX;
+                indexBuffer[icount++] = vcount-1 + K_TILE_RES_PX;
                
             
             }
         }
     }
 
-  
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertexBuffer), vertexBuffer, GL_STATIC_DRAW);
  
