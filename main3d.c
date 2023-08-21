@@ -45,8 +45,8 @@ static void error_callback(int error, const char* description)
 {
     fprintf(stderr, "Error: %s\n", description);
 }
-vec3 gCamPos = {0.0,40519.624023,0.0};
-vec3 gCamDir = {-0.002699 , -0.842619, 0.538504};
+vec3 gCamPos = {0.0,10519.624023,0.0};
+vec3 gCamDir = {0.0 , 0.0, 1.0};
 vec4 gMvDir = {0.0,0.0,0.0,0.0};
 float gCamSpeed=1000.0;
  
@@ -178,10 +178,11 @@ typedef struct
  * @param pRingId ring id 
  * @param pTileId position of the tile in the ring in order to manage resolution limit
  * tile 0/2/4/6 draw limit with inner tile
- *    7 0 1 
- *    6 x 2
- *    5 4 3 
- * @param pTextureTab List of texture (0=internal 8-15=ring1 16-23=ring2 24-31=ring3 ...)
+ *  x:(left<-right) z:(down->up)
+ *    1 0 7 
+ *    2 x 6
+ *    3 4 5 
+ * @param pTextureTab List of texture (pRingId*8+pTileId) (0=internal 8-15=ring1 16-23=ring2 24-31=ring3 ...) 
  */
 void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int pRingId,int pTileId,T_MapTileTex *pTextureTab)
 {
@@ -193,31 +194,43 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
     int vcount=0;
     int icount=0;
     float lsb =  ((float)pSizeWC)/((float)(K_TILE_RES_PX-1));
+    float hrLsb =  lsb/3.0;
 
     // debug color to comment
     float colorR = ((float)(pOriginX%124))/255.0;
     float colorG = ((float)(pOriginY%168))/255.0;
+    //  colorR=0.0;
+    //  colorG=0.0;
+
 
     // get current Texture
     float *lTexture = pTextureTab[pRingId*8+pTileId].tex;
-    float *lTextureHRLimit[3]={0,0,0};
-
-    for (int z=0;z<K_TILE_RES_PX;z++)
+    float *lHRTexture[8];
+    
+    for(int i=0;i<8;i++)
     {
-        for (int x=0;x<K_TILE_RES_PX;x++)
+        lHRTexture[i] = pTextureTab[(pRingId-1)*8+i].tex;
+    }
+
+    for (int zPx=0;zPx<K_TILE_RES_PX;zPx++)
+    {
+        for (int xPx=0;xPx<K_TILE_RES_PX;xPx++)
         {                
             /* tile 0/2/4/6 draw limit with inner tile
-                *    7 0 1 
-                *    6 x 2
-                *    5 4 3 
-                */
-            int highReslimit= ((pTileId==0 && z==0 && pRingId>1)); //||
-                     //   (pTileId==2 && z==0) ||
-                     //   (pTileId==4 && x==(K_TILE_RES_PX-2)) ||
-                     //   (pTileId==6 && z==(K_TILE_RES_PX-2))) && pRingId>1;
+                *  x (left<-right) z(down->up)
+                *    1 0 7 
+                *    2 x 6
+                *    3 4 5 
+                */  
+            int highReslimit= ((pTileId==0 && zPx==0) ||
+                               (pTileId==2 && xPx==0) ||
+                               (pTileId==4 && zPx==(K_TILE_RES_PX-2)) ||
+                               (pTileId==6 && xPx==(K_TILE_RES_PX-2)));
+
+                     
             
             // compute vertex color using perlin texture
-            float y = lTexture[x+z*K_TILE_RES_PX];
+            float y = lTexture[xPx+zPx*K_TILE_RES_PX];
            
 
             if(y<0)
@@ -234,17 +247,21 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
             }
 
             //Add Vertex
-            vertexBuffer[vcount].x=x*lsb + pOriginX;
+            
+            vertexBuffer[vcount].x=xPx*lsb + pOriginX;
             vertexBuffer[vcount].y=y*1000;
-            vertexBuffer[vcount].z=z*lsb + pOriginY;
+            vertexBuffer[vcount].z=zPx*lsb + pOriginY;
             vcount++;
 
 
+
             // //Add Triangles
-            if (((x+1)<K_TILE_RES_PX) && ((z+1)<K_TILE_RES_PX))
+            if (((xPx+1)<K_TILE_RES_PX) && ((zPx+1)<K_TILE_RES_PX))
             {
                 //Avoid Limit
-               if(highReslimit) continue;
+               if(highReslimit && pRingId>1) continue;
+
+               // todo add high res draw for tile 0
 
                 //triangle 1 
                 // x--x
@@ -253,7 +270,7 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
                 // x
                 indexBuffer[icount++] = vcount-1; 
                 indexBuffer[icount++] = vcount;
-                indexBuffer[icount++] = vcount-1 + K_TILE_RES_PX;
+                indexBuffer[icount++] = vcount-1 + K_TILE_RES_PX;  // todo add K_TILE_RES_PX*3 offset for high res
 
                 //triangle 2
                 //    x
@@ -282,6 +299,213 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, icount* sizeof(unsigned int), &indexBuffer[0], GL_STATIC_DRAW);
           
     glDrawElements(gRenderType, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
+
+ //  return;
+    if(pTileId!=0 && pTileId!=2 && pTileId!=4 && pTileId!=6) return;
+    if(pRingId<=1) return;
+
+    if(pTileId==0)
+    {
+        // Add low high resolution and low resolution vertex
+        vcount=0;
+        icount=0;
+        for (int zPx=0;zPx<2;zPx++)
+        {
+            float lCoef=1.0;
+            if(zPx==0)lCoef=3.0;
+            for (int xPx=0;xPx<(K_TILE_RES_PX*lCoef);xPx++)
+            {              
+
+                // compute vertex color using perlin texture
+                float y = lTexture[xPx+zPx*K_TILE_RES_PX];
+                if(zPx==0)
+                {  
+                    if(xPx < K_TILE_RES_PX) 
+                        y = lHRTexture[7][xPx+(K_TILE_RES_PX)*(K_TILE_RES_PX-1)];
+                    else if(xPx < (K_TILE_RES_PX*2-1)) 
+                        y = lHRTexture[0][(xPx-K_TILE_RES_PX+1) + K_TILE_RES_PX*(K_TILE_RES_PX-1)] ;
+                    else 
+                        y = lHRTexture[1][(xPx-K_TILE_RES_PX*2 + 2) + K_TILE_RES_PX*(K_TILE_RES_PX-1)] ;
+                }
+
+                if(y<0)
+                {
+                    vertexBuffer[vcount].r=(y + 1.0)/2.0 + colorR;
+                    vertexBuffer[vcount].g=(y + 1.0)/2.0 + colorG;
+                    vertexBuffer[vcount].b=(y + 1.0)/2.0 + 0.5;
+                }
+                else
+                {
+                    vertexBuffer[vcount].r=(y + 1.0)/2.0 + colorR;
+                    vertexBuffer[vcount].g=(y + 1.0)/2.0 + 0.2 + colorG;
+                    vertexBuffer[vcount].b=(y + 1.0)/2.0 ;
+                }
+
+                //Add Vertex            
+                vertexBuffer[vcount].x=xPx*(lsb/lCoef) + pOriginX;
+                vertexBuffer[vcount].y=y*1000;
+                vertexBuffer[vcount].z=zPx*lsb + pOriginY;
+
+            
+                vcount++;                                        
+                
+            }
+        }
+        // For all position of the limit line draw the 4 limits triangles
+        // between high and low resolution
+        int xHrPx = 0;
+        for (int xPx=0;xPx<(K_TILE_RES_PX-1);xPx++)
+        {       
+            
+            //Triangle 1-3  
+            // 1  <= Lres (zPx=1)
+            // |\    //
+            // | \   //
+            // 3--2 <= HRes (zPx=0) (repeat while Hres point reach the next low res point)   
+            int nextXLr = (xPx+1)*lsb;
+            int xHr =  (xHrPx+1)*hrLsb;
+
+            while(xHr<=nextXLr)
+            {
+                indexBuffer[icount++] = K_TILE_RES_PX*3 + xPx; 
+                indexBuffer[icount++] = xHrPx;
+                indexBuffer[icount++] = xHrPx+1;
+                xHrPx++;
+                xHr =  (xHrPx+1)*hrLsb;
+            }
+
+            //Triangle 4
+            // 1--2  <= Lres (zPx=1)
+            //  \ | 
+            //   \|
+            //    3  <= HRes (zPx=0)
+            indexBuffer[icount++] = K_TILE_RES_PX*3 + xPx;
+            indexBuffer[icount++] = K_TILE_RES_PX*3 + xPx+1;
+            indexBuffer[icount++] = xHrPx;          
+        
+        }
+    }
+    
+    if(pTileId==6)
+    {
+        // Add low high resolution and low resolution vertex
+        vcount=0;
+        icount=0;
+
+        // high resolution (indice 0) line and low resolution (indice 1) line
+        int xVal[2]={K_TILE_RES_PX-1,K_TILE_RES_PX-2};
+
+        // for high res and low res column
+        for (int i=0;i<2;i++)
+        {
+            int xPx = xVal[i];
+            float lCoef=1.0;
+            if(i==0)lCoef=3.0;
+            // for all pixel in column
+            for (int zPx=0;zPx<(K_TILE_RES_PX*lCoef);zPx++)
+            {              
+
+                // compute vertex color using perlin texture
+                float y = lTexture[xPx+zPx*K_TILE_RES_PX];
+                // High resolution get y in one of the 3 HR textures
+                if(i==0)
+                {  
+                    int xHrPx,zHrPx;
+                    xHrPx = 0;
+                    // choose the good texture (get good part of the high res texture)
+                    if(zPx < K_TILE_RES_PX) 
+                    {
+                        zHrPx = zPx;
+                        y = lHRTexture[7][xHrPx+zHrPx*K_TILE_RES_PX];
+                    }
+                    else if(zPx < (K_TILE_RES_PX*2-1))
+                    { 
+                        zHrPx = zPx-K_TILE_RES_PX+1;
+                        y = lHRTexture[6][xHrPx+zHrPx*K_TILE_RES_PX] ;
+                    }
+                    else 
+                    {
+                        zHrPx = zPx-K_TILE_RES_PX*2+2;
+                        y = lHRTexture[5][xHrPx+zHrPx*K_TILE_RES_PX] ;
+                    }
+                }
+
+                if(y<0)
+                {
+                    vertexBuffer[vcount].r=(y + 1.0)/2.0 + colorR;
+                    vertexBuffer[vcount].g=(y + 1.0)/2.0 + colorG;
+                    vertexBuffer[vcount].b=(y + 1.0)/2.0 + 0.5;
+                }
+                else
+                {
+                    vertexBuffer[vcount].r=(y + 1.0)/2.0 + colorR;
+                    vertexBuffer[vcount].g=(y + 1.0)/2.0 + 0.2 + colorG;
+                    vertexBuffer[vcount].b=(y + 1.0)/2.0 ;
+                }
+
+                //Add Vertex            
+                vertexBuffer[vcount].x=xPx*(lsb/lCoef) + pOriginX;
+                vertexBuffer[vcount].y=y*1000;
+                vertexBuffer[vcount].z=zPx*lsb + pOriginY;
+
+            
+                vcount++;                                        
+                
+            }
+        }
+        // For all position of the limit line draw the 4 limits triangles
+        // between high and low resolution
+        int iHrPx = 0;
+        for (int iPx=0;iPx<(K_TILE_RES_PX-1);iPx++)
+        {       
+            
+            //Triangle 1-3  
+            // 1  <= Lres line (offset K_TILE_RES_PX*3 )
+            // |\    //
+            // | \   //
+            // 3--2 <= HRes line (repeat while Hres point reach the next low res point)   
+            int nextXLr = (iPx+1)*lsb;
+            int xHr =  (iHrPx+1)*hrLsb;
+
+            while(xHr<=nextXLr)
+            {
+                indexBuffer[icount++] = K_TILE_RES_PX*3 + iPx; 
+                indexBuffer[icount++] = iHrPx;
+                indexBuffer[icount++] = iHrPx+1;
+                iHrPx++;
+                xHr =  (iHrPx+1)*hrLsb;
+            }
+
+            //Triangle 4
+            // 1--2  <= Lres line (offset K_TILE_RES_PX*3 )
+            //  \ | 
+            //   \|
+            //    3  <= HRes line
+            indexBuffer[icount++] = K_TILE_RES_PX*3 + iPx;
+            indexBuffer[icount++] = K_TILE_RES_PX*3 + iPx+1;
+            indexBuffer[icount++] = iHrPx;          
+        
+        }
+    }
+    
+
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertexBuffer), vertexBuffer, GL_STATIC_DRAW);
+ 
+   
+    glVertexAttribPointer(vpos_location, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertexBuffer[0]), (void*) 0);
+                          
+    glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertexBuffer[0]), (void*) (sizeof(float) * 3));
+
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, icount* sizeof(unsigned int), &indexBuffer[0], GL_STATIC_DRAW);
+          
+    glDrawElements(gRenderType, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
+   //glDrawElements(GL_LINES, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
+
+
+    
 }
 
 void drawMapTilesRing(int pPosX_WC,int pPosY_WC,int pSizeWC,int pGridSizeWC)
@@ -296,15 +520,15 @@ void drawMapTilesRing(int pPosX_WC,int pPosY_WC,int pSizeWC,int pGridSizeWC)
     // 6 x 2
     // 5 4 3
 
-    perlinGenHeightMap(perlinHeightMapTab[0].tex,pPosX_WC,pPosY_WC,pSizeWC,K_TILE_RES_PX,pGridSizeWC);
+    perlinGenHeightMap(perlinHeightMapTab[0].tex,pPosX_WC-pSizeWC/2,pPosY_WC-pSizeWC/2,pSizeWC,K_TILE_RES_PX,pGridSizeWC);
     for(int ringId=1;ringId<4;ringId++)
     {
         int lRingSize_WC;
         lRingSize_WC= pow(3,ringId-1)*pSizeWC;
         for(int i=0;i<8;i++)
         {
-            int xOffset = cstXOffset[i]*lRingSize_WC + pPosX_WC;
-            int yOffset = cstYOffset[i]*lRingSize_WC + pPosY_WC;
+            int xOffset = cstXOffset[i]*lRingSize_WC + pPosX_WC - lRingSize_WC/2;
+            int yOffset = cstYOffset[i]*lRingSize_WC + pPosY_WC - lRingSize_WC/2;
             perlinGenHeightMap(perlinHeightMapTab[ringId*8 + i].tex,xOffset,yOffset,lRingSize_WC,K_TILE_RES_PX,pGridSizeWC);
         }
     }
@@ -426,7 +650,7 @@ int main(void)
         gCamPos[1] += gMvDir[1]*lDeltaTime*gCamSpeed;
         gCamPos[2] += gMvDir[2]*lDeltaTime*gCamSpeed;
 
-        //printf("%f,%f,%f-%f,%f,%f\n",gCamDir[0],gCamDir[1],gCamDir[2],gCamPos[0],gCamPos[1],gCamPos[2]);
+        printf("dir x:%f,y:%f,z:%f-pos x:%f,y:%f,z:%f\n",gCamDir[0],gCamDir[1],gCamDir[2],gCamPos[0],gCamPos[1],gCamPos[2]);
 
         ratio = width / (float) height;
  
@@ -442,6 +666,12 @@ int main(void)
        // mat4x4_rotate_Z(m, m, (float) glfwGetTime());
         //mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 10.f, -10.f);
         //mat4x4_frustum(p, -ratio, ratio, -1.f, 1.f, 10.f, 10000.f);
+
+        /*
+        The X axis extends from left to right, with increasing values to the right.
+        The Y axis extends from bottom to top, with increasing values upwards.
+        The Z axis extends from the screen towards you (depth-wise), with increasing values going towards the back of the screen.
+        */
         mat4x4_perspective(p,0.785398,ratio,1.0f,100000.f);
         mat4x4_mul(mvp, p, m);
  
