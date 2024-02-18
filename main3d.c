@@ -186,7 +186,6 @@ typedef struct
  */
 void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int pRingId,int pTileId,T_MapTileTex *pTextureTab)
 {
-   
     // get left bottom corner coord in order to generate texture at center
     int pOriginX = pCenterX_WC - pSizeWC/2;
     int pOriginY = pCenterY_WC - pSizeWC/2;       
@@ -206,12 +205,22 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
     // get current Texture
     float *lTexture = pTextureTab[pRingId*8+pTileId].tex;
     float *lHRTexture[8];
+
+    const int cstHrMap[8][3]=
+    {
+        [0] = {7,0,1},
+        [2] = {3,2,1},
+        [6] = {5,6,7},
+        [4] = {5,4,3}
+    };
     
+    // get High resolution texture using RingId for all 8 tileId
     for(int i=0;i<8;i++)
     {
         lHRTexture[i] = pTextureTab[(pRingId-1)*8+i].tex;
     }
 
+    // prepare triangle for current tile id except for limit low res/high res tile
     for (int zPx=0;zPx<K_TILE_RES_PX;zPx++)
     {
         for (int xPx=0;xPx<K_TILE_RES_PX;xPx++)
@@ -258,8 +267,8 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
             // //Add Triangles
             if (((xPx+1)<K_TILE_RES_PX) && ((zPx+1)<K_TILE_RES_PX))
             {
-                //Avoid Limit
-               if(highReslimit && pRingId>1) continue;
+                // Do not add triangle for transition limit between high res and low res
+                if(highReslimit && pRingId>1) continue;
 
                // todo add high res draw for tile 0
 
@@ -286,6 +295,7 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
         }
     }
 
+    // send triangle to gpu except for limit high res/low res
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertexBuffer), vertexBuffer, GL_STATIC_DRAW);
  
@@ -300,10 +310,14 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
           
     glDrawElements(gRenderType, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
 
- //  return;
+
+
+
     if(pTileId!=0 && pTileId!=2 && pTileId!=4 && pTileId!=6) return;
     if(pRingId<=1) return;
 
+
+    // TILE 0 --- add triangle for pTileId limit high res low rest
     if(pTileId==0)
     {
         // Add low high resolution and low resolution vertex
@@ -320,12 +334,13 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
                 float y = lTexture[xPx+zPx*K_TILE_RES_PX];
                 if(zPx==0)
                 {  
+                    const int *lHrId = &cstHrMap[pTileId][0];
                     if(xPx < K_TILE_RES_PX) 
-                        y = lHRTexture[7][xPx+(K_TILE_RES_PX)*(K_TILE_RES_PX-1)];
+                        y = lHRTexture[lHrId[0]][xPx+(K_TILE_RES_PX)*(K_TILE_RES_PX-1)];
                     else if(xPx < (K_TILE_RES_PX*2-1)) 
-                        y = lHRTexture[0][(xPx-K_TILE_RES_PX+1) + K_TILE_RES_PX*(K_TILE_RES_PX-1)] ;
+                        y = lHRTexture[lHrId[1]][(xPx-K_TILE_RES_PX+1) + K_TILE_RES_PX*(K_TILE_RES_PX-1)] ;
                     else 
-                        y = lHRTexture[1][(xPx-K_TILE_RES_PX*2 + 2) + K_TILE_RES_PX*(K_TILE_RES_PX-1)] ;
+                        y = lHRTexture[lHrId[2]][(xPx-K_TILE_RES_PX*2 + 2) + K_TILE_RES_PX*(K_TILE_RES_PX-1)] ;
                 }
 
                 if(y<0)
@@ -385,25 +400,34 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
         
         }
     }
-    
-    if(pTileId==6)
+    // TILE 2 --- add triangle for pTileId limit high res low rest
+    if(pTileId==2 )
     {
         // Add low high resolution and low resolution vertex
         vcount=0;
         icount=0;
 
-        // high resolution (indice 0) line and low resolution (indice 1) line
-        int xVal[2]={K_TILE_RES_PX-1,K_TILE_RES_PX-2};
 
-        // for high res and low res column
+        // for i=0 low res i=1 high res
         for (int i=0;i<2;i++)
         {
-            int xPx = xVal[i];
+            int xPx,zPx;
             float lCoef=1.0;
             if(i==0)lCoef=3.0;
-            // for all pixel in column
-            for (int zPx=0;zPx<(K_TILE_RES_PX*lCoef);zPx++)
-            {              
+
+            if(pTileId==0)  zPx = (i==0)?0:1;
+            if(pTileId==2)  xPx = (i==0)?0:1;
+            if(pTileId==4)  zPx = (i==0)?K_TILE_RES_PX-1:K_TILE_RES_PX-2;
+            if(pTileId==6)  xPx = (i==0)?K_TILE_RES_PX-1:K_TILE_RES_PX-2;
+
+
+            // for all pixel in line
+            for (int linePx=0;linePx<(K_TILE_RES_PX*lCoef);linePx++)
+            {  
+                if(pTileId==0) xPx = linePx;
+                if(pTileId==2) zPx = linePx;
+                if(pTileId==4) xPx = linePx;
+                if(pTileId==6) zPx = linePx;
 
                 // compute vertex color using perlin texture
                 float y = lTexture[xPx+zPx*K_TILE_RES_PX];
@@ -411,22 +435,23 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
                 if(i==0)
                 {  
                     int xHrPx,zHrPx;
-                    xHrPx = 0;
+                    xHrPx = K_TILE_RES_PX-1;
+                    const int *lHrId = &cstHrMap[pTileId][0];
                     // choose the good texture (get good part of the high res texture)
                     if(zPx < K_TILE_RES_PX) 
                     {
                         zHrPx = zPx;
-                        y = lHRTexture[7][xHrPx+zHrPx*K_TILE_RES_PX];
+                        y = lHRTexture[lHrId[0]][xHrPx+zHrPx*K_TILE_RES_PX];
                     }
                     else if(zPx < (K_TILE_RES_PX*2-1))
                     { 
                         zHrPx = zPx-K_TILE_RES_PX+1;
-                        y = lHRTexture[6][xHrPx+zHrPx*K_TILE_RES_PX] ;
+                        y = lHRTexture[lHrId[1]][xHrPx+zHrPx*K_TILE_RES_PX] ;
                     }
                     else 
                     {
                         zHrPx = zPx-K_TILE_RES_PX*2+2;
-                        y = lHRTexture[5][xHrPx+zHrPx*K_TILE_RES_PX] ;
+                        y = lHRTexture[lHrId[2]][xHrPx+zHrPx*K_TILE_RES_PX] ;
                     }
                 }
 
@@ -444,9 +469,9 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
                 }
 
                 //Add Vertex            
-                vertexBuffer[vcount].x=xPx*(lsb/lCoef) + pOriginX;
+                vertexBuffer[vcount].x=xPx*lsb + pOriginX;
                 vertexBuffer[vcount].y=y*1000;
-                vertexBuffer[vcount].z=zPx*lsb + pOriginY;
+                vertexBuffer[vcount].z=zPx*(lsb/lCoef) + pOriginY;
 
             
                 vcount++;                                        
@@ -488,6 +513,14 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
         }
     }
     
+    // TILE 4 --- add triangle for pTileId limit high res low rest
+    if(pTileId==4 )
+    {
+    }
+    // TILE 6 --- add triangle for pTileId limit high res low rest
+    if(pTileId==6 )
+    {
+    }
 
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertexBuffer), vertexBuffer, GL_STATIC_DRAW);
@@ -501,8 +534,8 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
 
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, icount* sizeof(unsigned int), &indexBuffer[0], GL_STATIC_DRAW);
           
-    glDrawElements(gRenderType, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
-   //glDrawElements(GL_LINES, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
+   glDrawElements(gRenderType, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
+  // glDrawElements(GL_LINES, K_TILE_SIZE*K_TILE_SIZE,GL_UNSIGNED_INT,(void*)0 );
 
 
     
@@ -619,8 +652,8 @@ int main(void)
     glEnable(GL_DEPTH_TEST); 
     //glEnable(GL_CULL_FACE);    
 
-  while (!glfwWindowShouldClose(window))
-  {
+    while (!glfwWindowShouldClose(window))
+    {
         double lCurrentTime = glfwGetTime();
         double lDeltaTime =  lCurrentTime-stc_lastTime;
         stc_lastTime =  lCurrentTime;
@@ -650,20 +683,20 @@ int main(void)
         gCamPos[1] += gMvDir[1]*lDeltaTime*gCamSpeed;
         gCamPos[2] += gMvDir[2]*lDeltaTime*gCamSpeed;
 
-        printf("dir x:%f,y:%f,z:%f-pos x:%f,y:%f,z:%f\n",gCamDir[0],gCamDir[1],gCamDir[2],gCamPos[0],gCamPos[1],gCamPos[2]);
+        // printf("dir x:%f,y:%f,z:%f-pos x:%f,y:%f,z:%f\n",gCamDir[0],gCamDir[1],gCamDir[2],gCamPos[0],gCamPos[1],gCamPos[2]);
 
         ratio = width / (float) height;
- 
+
         glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
- 
+
         mat4x4_identity(m);
         vec3 eye = {gCamPos[0], gCamPos[1], gCamPos[2]};
         vec3 center = {gCamDir[0]+gCamPos[0], gCamDir[1]+gCamPos[1], gCamDir[2]+gCamPos[2]};
         vec3 up = {0, 1.0, 0.0};
         mat4x4_translate_in_place(m, gCamPos[0],gCamPos[1],gCamPos[2] );
         mat4x4_look_at(m,eye,center,up);
-       // mat4x4_rotate_Z(m, m, (float) glfwGetTime());
+    // mat4x4_rotate_Z(m, m, (float) glfwGetTime());
         //mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 10.f, -10.f);
         //mat4x4_frustum(p, -ratio, ratio, -1.f, 1.f, 10.f, 10000.f);
 
@@ -674,7 +707,7 @@ int main(void)
         */
         mat4x4_perspective(p,0.785398,ratio,1.0f,100000.f);
         mat4x4_mul(mvp, p, m);
- 
+
 
         glUseProgram(program);
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
@@ -719,10 +752,10 @@ int main(void)
         // printf(" - PollEvents %d\n",(counter++)%50);
 
     }
+        
     
- 
     glfwDestroyWindow(window);
- 
+
     glfwTerminate();
     exit(EXIT_SUCCESS);
 }
