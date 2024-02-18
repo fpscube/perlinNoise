@@ -435,21 +435,25 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
                 if(i==0)
                 {  
                     int xHrPx,zHrPx;
+                    // todo à generaliser 
                     xHrPx = K_TILE_RES_PX-1;
                     const int *lHrId = &cstHrMap[pTileId][0];
                     // choose the good texture (get good part of the high res texture)
-                    if(zPx < K_TILE_RES_PX) 
+                    if(linePx < K_TILE_RES_PX) 
                     {
+                        // todo à generaliser 
                         zHrPx = zPx;
                         y = lHRTexture[lHrId[0]][xHrPx+zHrPx*K_TILE_RES_PX];
                     }
-                    else if(zPx < (K_TILE_RES_PX*2-1))
+                    else if(linePx < (K_TILE_RES_PX*2-1))
                     { 
+                        // todo à generaliser 
                         zHrPx = zPx-K_TILE_RES_PX+1;
                         y = lHRTexture[lHrId[1]][xHrPx+zHrPx*K_TILE_RES_PX] ;
                     }
                     else 
                     {
+                        // todo à generaliser 
                         zHrPx = zPx-K_TILE_RES_PX*2+2;
                         y = lHRTexture[lHrId[2]][xHrPx+zHrPx*K_TILE_RES_PX] ;
                     }
@@ -468,7 +472,9 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
                     vertexBuffer[vcount].b=(y + 1.0)/2.0 ;
                 }
 
-                //Add Vertex            
+                //Add Vertex
+                
+                // todo à generaliser             
                 vertexBuffer[vcount].x=xPx*lsb + pOriginX;
                 vertexBuffer[vcount].y=y*1000;
                 vertexBuffer[vcount].z=zPx*(lsb/lCoef) + pOriginY;
@@ -481,6 +487,8 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
         // For all position of the limit line draw the 4 limits triangles
         // between high and low resolution
         int iHrPx = 0;
+
+            // todo à generaliser 
         for (int iPx=0;iPx<(K_TILE_RES_PX-1);iPx++)
         {       
             
@@ -492,6 +500,8 @@ void drawMapTile(int pCenterX_WC,int pCenterY_WC,int pSizeWC,int pGridSizeWC,int
             int nextXLr = (iPx+1)*lsb;
             int xHr =  (iHrPx+1)*hrLsb;
 
+
+                        // todo à generaliser 
             while(xHr<=nextXLr)
             {
                 indexBuffer[icount++] = K_TILE_RES_PX*3 + iPx; 
